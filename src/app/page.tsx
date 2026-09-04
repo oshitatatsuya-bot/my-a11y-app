@@ -1,3 +1,5 @@
+import Link from "next/link"
+
 import { FeaturesSection } from "@/components/features-section"
 import { HeroSection } from "@/components/hero-section"
 import { PainPointsSection } from "@/components/pain-points-section"
@@ -33,6 +35,11 @@ export default function Home() {
                 <a className="hover:text-white" href="#pricing">
                   Pricing
                 </a>
+              </li>
+              <li>
+                <Link className="hover:text-white" href="/scan">
+                  Scanner
+                </Link>
               </li>
               <li>
                 <a

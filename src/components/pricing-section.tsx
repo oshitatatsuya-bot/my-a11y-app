@@ -10,6 +10,8 @@ const plans = [
     cadence: "forever",
     description: "Validate a single property and see whether we belong in your stack.",
     featured: false,
+    // Only the free tier is self-serve until billing is wired up.
+    cta: { label: "Start free", href: "/login" },
     features: [
       "1 site, 5 pages / month",
       "Core WCAG issue report",
@@ -22,6 +24,7 @@ const plans = [
     cadence: "/mo",
     description: "Built for in-house product and compliance teams shipping continuously.",
     featured: true,
+    cta: { label: "Join waitlist", href: "#waitlist" },
     features: [
       "Unlimited pages on 3 sites",
       "AI code-fix suggestions",
@@ -35,6 +38,7 @@ const plans = [
     cadence: "/mo",
     description: "Run a portfolio of client properties from one workspace.",
     featured: false,
+    cta: { label: "Join waitlist", href: "#waitlist" },
     features: [
       "Unlimited client sites",
       "White-label reports & badge",
@@ -104,16 +108,18 @@ export function PricingSection() {
                 ))}
               </ul>
               <a
-                href="#waitlist"
+                href={plan.cta.href}
                 className={cn(
                   buttonVariants({
                     variant: plan.featured ? "default" : "outline",
                   }),
                   "mt-8 h-10 w-full",
-                  plan.featured && "bg-sky-600 text-white hover:bg-sky-500"
+                  // White on sky-600 is only 4.02:1, below WCAG 1.4.3, so the
+                  // resting and hover shades both stay at sky-700 or darker.
+                  plan.featured && "bg-sky-700 text-white hover:bg-sky-800"
                 )}
               >
-                Join waitlist
+                {plan.cta.label}
               </a>
             </li>
           ))}

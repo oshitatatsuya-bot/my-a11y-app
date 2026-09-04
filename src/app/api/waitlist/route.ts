@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { createSupabaseClient } from "@/lib/supabase"
+import { createAnonClient } from "@/lib/supabase/anon"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const supabase = createSupabaseClient()
+    const supabase = createAnonClient()
     const { error } = await supabase.from("waitlist").insert({ email })
 
     if (error) {

@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react"
 import type { FormEvent } from "react"
+import Link from "next/link"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -105,7 +106,14 @@ export function HeroSection() {
               </Button>
             </div>
             <p className="mt-3 text-sm text-slate-400">
-              No spam. Early access for engineering, legal, and agency teams.
+              No spam. Early access for engineering, legal, and agency teams.{" "}
+              <Link
+                href="/scan"
+                className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
+              >
+                Or scan a page now on the free plan
+              </Link>
+              .
             </p>
             <p
               id={statusId}
