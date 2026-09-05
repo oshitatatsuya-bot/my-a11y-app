@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { APICallError, generateObject } from 'ai';
+import { APICallError, RetryError, generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
@@ -25,6 +25,19 @@ Rules:
 - Preserve the original markup, content and class names; change only what accessibility requires.
 - Never invent visible text. If a name is required and none can be derived, use a clearly marked placeholder.
 - Return the snippet only, without surrounding document structure or markdown fences.`;
+
+/**
+ * Retryable failures are re-thrown wrapped in a `RetryError`, so the
+ * provider's own response — the only place that says what actually went
+ * wrong — is reachable only through the wrapper.
+ */
+function providerError(error: unknown) {
+  if (RetryError.isInstance(error)) {
+    return APICallError.isInstance(error.lastError) ? error.lastError : undefined;
+  }
+
+  return APICallError.isInstance(error) ? error : undefined;
+}
 
 export async function POST(req: NextRequest) {
   // Each call spends OpenAI credits, so it is gated the same way as scanning.
@@ -66,6 +79,10 @@ export async function POST(req: NextRequest) {
     // snippet itself contains quotes.
     const { object } = await generateObject({
       model: openai('gpt-4o'),
+      // Someone is waiting on this response, and the failures worth retrying
+      // rarely clear within one attempt. The default of two took 27s to report
+      // an exhausted credit balance, which no number of retries would fix.
+      maxRetries: 1,
       schema: fixSchema,
       system: SYSTEM_PROMPT,
       prompt: [
@@ -85,10 +102,30 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Fix API error:', error);
 
-    // A rejected key is an operator problem, not a model failure, and saying
-    // so is the difference between a five minute fix and a debugging session.
-    if (APICallError.isInstance(error)) {
-      if (error.statusCode === 401 || error.statusCode === 403) {
+    // A rejected key or an empty balance is an operator problem, not a model
+    // failure, and saying so is the difference between a five minute fix and a
+    // debugging session.
+    const apiError = providerError(error);
+
+    if (apiError) {
+      const body =
+        typeof apiError.responseBody === 'string' ? apiError.responseBody : '';
+
+      // Reported as 429 like a rate limit, but no amount of waiting fixes it.
+      if (
+        body.includes('insufficient_quota') ||
+        body.includes('credit_balance_exhausted')
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              'AI fixes are unavailable: the OpenAI account has no credits remaining.',
+          },
+          { status: 503 }
+        );
+      }
+
+      if (apiError.statusCode === 401 || apiError.statusCode === 403) {
         return NextResponse.json(
           {
             error:
@@ -98,7 +135,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (error.statusCode === 429) {
+      if (apiError.statusCode === 429) {
         return NextResponse.json(
           { error: 'The AI service is rate limited. Please retry in a moment.' },
           { status: 429 }
