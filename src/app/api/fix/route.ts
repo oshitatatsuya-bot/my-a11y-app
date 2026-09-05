@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateObject } from 'ai';
+import { APICallError, generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
@@ -84,6 +84,28 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error('Fix API error:', error);
+
+    // A rejected key is an operator problem, not a model failure, and saying
+    // so is the difference between a five minute fix and a debugging session.
+    if (APICallError.isInstance(error)) {
+      if (error.statusCode === 401 || error.statusCode === 403) {
+        return NextResponse.json(
+          {
+            error:
+              'AI fixes are unavailable: the OpenAI API key was rejected. Check OPENAI_API_KEY.',
+          },
+          { status: 503 }
+        );
+      }
+
+      if (error.statusCode === 429) {
+        return NextResponse.json(
+          { error: 'The AI service is rate limited. Please retry in a moment.' },
+          { status: 429 }
+        );
+      }
+    }
+
     return NextResponse.json(
       {
         error: 'Failed to generate fix',
