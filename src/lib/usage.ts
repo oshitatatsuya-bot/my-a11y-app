@@ -46,3 +46,22 @@ export async function loadUsage(
     periodStart,
   }
 }
+
+/**
+ * The distinct hosts the caller has scanned this period, so a scan that the
+ * site limit would reject can be refused before a browser is launched.
+ * `record_scan` performs the same check atomically and stays authoritative.
+ */
+export async function loadScannedHosts(
+  supabase: SupabaseClient,
+  userId: string,
+  periodStart: string
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("scans")
+    .select("host")
+    .eq("user_id", userId)
+    .gte("created_at", periodStart)
+
+  return [...new Set((data ?? []).map((row) => String(row.host)))]
+}

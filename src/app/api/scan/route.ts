@@ -13,7 +13,7 @@ import {
   type Violation,
 } from '@/lib/a11y';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { loadUsage } from '@/lib/usage';
+import { loadScannedHosts, loadUsage } from '@/lib/usage';
 
 // Headless Chrome startup plus page load exceeds the platform default of 10s.
 export const maxDuration = 60;
@@ -146,6 +146,26 @@ export async function POST(req: NextRequest) {
           usage: { plan: usage.plan, scansUsed: usage.scansUsed, scansLimit: usage.limits.scansPerMonth },
         },
         { status: 429 }
+      );
+    }
+
+    // Same reasoning as the quota check above: a scan that cannot be recorded
+    // must not cost a browser run either.
+    const hosts = await loadScannedHosts(supabase, user.id, usage.periodStart);
+    if (!hosts.includes(target.host) && hosts.length >= usage.limits.sites) {
+      return NextResponse.json(
+        {
+          error: `Your ${usage.limits.label} plan covers ${usage.limits.sites} site${
+            usage.limits.sites === 1 ? '' : 's'
+          } per month, and you have already scanned ${hosts.join(', ')} this month. Upgrade to scan more hosts.`,
+          code: 'SITE_LIMIT_EXCEEDED',
+          usage: {
+            plan: usage.plan,
+            scansUsed: usage.scansUsed,
+            scansLimit: usage.limits.scansPerMonth,
+          },
+        },
+        { status: 403 }
       );
     }
 
