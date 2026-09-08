@@ -107,6 +107,14 @@ export function HeroSection() {
             </div>
             <p className="mt-3 text-sm text-slate-400">
               No spam. Early access for engineering, legal, and agency teams.{" "}
+              By joining you agree to the{" "}
+              <Link
+                href="/privacy"
+                className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
+              >
+                privacy policy
+              </Link>
+              .{" "}
               <Link
                 href="/scan"
                 className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"

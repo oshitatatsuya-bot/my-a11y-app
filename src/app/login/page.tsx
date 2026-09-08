@@ -40,7 +40,10 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
         <LoginForm next={next} />
 
         <p className="mt-8 text-xs text-slate-500">
-          The Free plan includes 5 scans per month on one site.
+          The Free plan includes 5 scans per month on one site.{" "}
+          <Link href="/privacy" className="underline underline-offset-2 hover:text-slate-300">
+            Privacy
+          </Link>
         </p>
       </div>
     </main>

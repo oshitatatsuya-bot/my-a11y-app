@@ -13,9 +13,9 @@ const plans = [
     // Only the free tier is self-serve until billing is wired up.
     cta: { label: "Start free", href: "/login" },
     features: [
-      "1 site, 5 pages / month",
-      "Core WCAG issue report",
-      "Public badge (limited)",
+      "1 site, 5 scans / month",
+      "AI code fixes, re-checked with axe-core",
+      "Scan history and a public badge",
     ],
   },
   {
@@ -26,10 +26,10 @@ const plans = [
     featured: true,
     cta: { label: "Join waitlist", href: "#waitlist" },
     features: [
-      "Unlimited pages on 3 sites",
-      "AI code-fix suggestions",
-      "Historical scan trends",
+      "1,000 scans / month on 3 sites",
+      "Everything in Free",
       "Priority email support",
+      "Self-serve billing when it opens",
     ],
   },
   {
@@ -40,10 +40,10 @@ const plans = [
     featured: false,
     cta: { label: "Join waitlist", href: "#waitlist" },
     features: [
-      "Unlimited client sites",
-      "White-label reports & badge",
-      "Shared team seats",
-      "SSO-ready on request",
+      "5,000 scans / month across a client portfolio",
+      "Everything in Pro",
+      "Team seats and white-label reports (coming)",
+      "We'll confirm scope before charging",
     ],
   },
 ]

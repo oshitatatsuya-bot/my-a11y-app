@@ -62,7 +62,13 @@ export default function Home() {
       <footer className="border-t border-slate-200 bg-white py-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} A11yFix. Accessibility tooling for product teams.</p>
-          <p>Not a substitute for legal advice.</p>
+          <p>
+            <Link href="/privacy" className="hover:text-slate-700">
+              Privacy
+            </Link>
+            <span aria-hidden="true"> · </span>
+            Not a substitute for legal advice.
+          </p>
         </div>
       </footer>
     </>
