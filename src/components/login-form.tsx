@@ -1,14 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser"
 
 type Status = "idle" | "sending" | "sent" | "error"
 
+/** Supabase reports its send throttle as "you can only request this after N seconds". */
+function throttleSeconds(reason: string) {
+  const match = /after (\d+) seconds?/.exec(reason)
+
+  return match ? Number(match[1]) : 60
+}
+
 export function LoginForm({ next }: { next: string }) {
   const [status, setStatus] = useState<Status>("idle")
   const [message, setMessage] = useState("")
+  const [cooldown, setCooldown] = useState(0)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+
+    const timer = setTimeout(() => setCooldown(cooldown - 1), 1000)
+
+    return () => clearTimeout(timer)
+  }, [cooldown])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -40,19 +56,29 @@ export function LoginForm({ next }: { next: string }) {
     })
 
     if (error) {
-      console.error("Magic link request failed:", error.message)
       setStatus("error")
-      setMessage(
-        error.status === 429
-          ? "Too many sign-in emails were requested. Please wait and try again."
-          : "Could not send the sign-in link. Please try again."
-      )
+
+      // Being throttled is a normal thing to run into, so it reports how long
+      // the wait is instead of surfacing as an application error.
+      if (error.status === 429) {
+        setMessage("")
+        setCooldown(throttleSeconds(error.message))
+        return
+      }
+
+      console.error("Magic link request failed:", error.message)
+      setMessage("Could not send the sign-in link. Please try again.")
       return
     }
 
     setStatus("sent")
     setMessage(`We sent a sign-in link to ${email}. It expires in one hour.`)
   }
+
+  const statusMessage =
+    cooldown > 0
+      ? `Supabase limits how often sign-in emails go out. You can request another in ${cooldown} seconds.`
+      : message
 
   return (
     <form onSubmit={handleSubmit} className="mt-6 space-y-3">
@@ -74,10 +100,14 @@ export function LoginForm({ next }: { next: string }) {
       </div>
       <button
         type="submit"
-        disabled={status === "sending"}
+        disabled={status === "sending" || cooldown > 0}
         className="w-full rounded-lg bg-sky-500 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 disabled:opacity-50"
       >
-        {status === "sending" ? "Sending link…" : "Email me a sign-in link"}
+        {status === "sending"
+          ? "Sending link…"
+          : cooldown > 0
+            ? `Try again in ${cooldown}s`
+            : "Email me a sign-in link"}
       </button>
 
       <p
@@ -87,12 +117,12 @@ export function LoginForm({ next }: { next: string }) {
         className={
           status === "sent"
             ? "text-sm text-emerald-300"
-            : status === "error"
+            : statusMessage
               ? "text-sm text-red-300"
               : "sr-only"
         }
       >
-        {message || "Form status"}
+        {statusMessage || "Form status"}
       </p>
     </form>
   )
