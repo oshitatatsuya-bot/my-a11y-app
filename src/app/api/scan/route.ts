@@ -1,8 +1,5 @@
-import { existsSync } from 'node:fs';
 import { lookup } from 'node:dns/promises';
 import { NextRequest, NextResponse } from 'next/server';
-import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
 import { AxePuppeteer } from '@axe-core/puppeteer';
 
 import {
@@ -12,43 +9,12 @@ import {
   summarizeViolations,
   type Violation,
 } from '@/lib/a11y';
+import { BrowserBusyError, withBrowser } from '@/lib/browser';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { loadScannedHosts, loadUsage } from '@/lib/usage';
 
 // Headless Chrome startup plus page load exceeds the platform default of 10s.
 export const maxDuration = 60;
-
-const LOCAL_CHROME_PATHS = [
-  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-  process.env.LOCAL_CHROME_PATH,
-].filter(Boolean) as string[];
-
-const isVercel = Boolean(process.env.VERCEL);
-
-// @sparticuz/chromium dropped its own `defaultViewport` export, so keep the
-// viewport it used to ship for the serverless build.
-const SERVERLESS_VIEWPORT = { width: 1920, height: 1080, deviceScaleFactor: 1 };
-const LOCAL_VIEWPORT = { width: 1280, height: 800 };
-
-// One Chrome instance needs roughly 500MB, so cap how many a single server
-// instance will run at once instead of letting it exhaust memory.
-const MAX_CONCURRENT_SCANS = 2;
-let activeScans = 0;
-
-async function getExecutablePath() {
-  if (isVercel) {
-    return await chromium.executablePath();
-  }
-
-  for (const path of LOCAL_CHROME_PATHS) {
-    if (existsSync(path)) {
-      return path;
-    }
-  }
-
-  throw new Error('Local Chrome browser not found. Please install Google Chrome.');
-}
 
 function isBlockedAddress(address: string, family: number): boolean {
   if (family === 4) {
@@ -72,7 +38,7 @@ function isBlockedAddress(address: string, family: number): boolean {
 // Opt-in for local development, so a developer can scan their own dev server.
 // Never honoured on Vercel, where it would expose internal services.
 const allowPrivateTargets =
-  !isVercel && process.env.ALLOW_PRIVATE_SCAN_TARGETS === 'true';
+  !process.env.VERCEL && process.env.ALLOW_PRIVATE_SCAN_TARGETS === 'true';
 
 /**
  * Blocks scans of addresses that are only reachable from inside the network the
@@ -103,16 +69,6 @@ export async function POST(req: NextRequest) {
       { status: 401 }
     );
   }
-
-  if (activeScans >= MAX_CONCURRENT_SCANS) {
-    return NextResponse.json(
-      { error: 'The scanner is busy. Please retry in a moment.' },
-      { status: 429, headers: { 'Retry-After': '30' } }
-    );
-  }
-
-  let browser: Awaited<ReturnType<typeof puppeteer.launch>> | undefined;
-  activeScans += 1;
 
   try {
     const { url } = await req.json();
@@ -171,20 +127,13 @@ export async function POST(req: NextRequest) {
 
     await assertPublicHost(target.hostname);
 
-    const executablePath = await getExecutablePath();
-
-    browser = await puppeteer.launch({
-      args: isVercel ? chromium.args : [],
-      defaultViewport: isVercel ? SERVERLESS_VIEWPORT : LOCAL_VIEWPORT,
-      executablePath,
-      headless: true,
-    });
-
-    const page = await browser.newPage();
-    await page.goto(target.href, { waitUntil: 'networkidle0', timeout: 30000 });
-
     // axe-coreによるWCAGスキャン実行（WCAG 2.x A/AAのルールのみ）
-    const axeResults = await new AxePuppeteer(page).withTags(WCAG_TAGS).analyze();
+    const axeResults = await withBrowser(async (browser) => {
+      const page = await browser.newPage();
+      await page.goto(target.href, { waitUntil: 'networkidle0', timeout: 30000 });
+
+      return new AxePuppeteer(page).withTags(WCAG_TAGS).analyze();
+    });
 
     // レスポンス用データ整形
     const violations: Violation[] = sortViolations(
@@ -251,6 +200,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
+    if (error instanceof BrowserBusyError) {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 429, headers: { 'Retry-After': '30' } }
+      );
+    }
+
     console.error('Scan error:', error);
     return NextResponse.json(
       {
@@ -259,9 +215,6 @@ export async function POST(req: NextRequest) {
       },
       { status: 500 }
     );
-  } finally {
-    activeScans -= 1;
-    await browser?.close();
   }
 }
 

@@ -33,11 +33,32 @@ interface ScanResult {
   usage?: { scansUsed: number; scansLimit: number };
 }
 
+type Verification = 'verified' | 'unverified' | 'not-verifiable';
+
 interface FixResult {
   originalCode: string;
   fixedCode: string;
   explanation: string;
+  verification: Verification;
 }
+
+const VERIFICATION_COPY: Record<Verification, { label: string; detail: string; className: string }> = {
+  verified: {
+    label: 'Verified',
+    detail: 'Re-scanned with axe-core: this rule no longer fails on the fixed code.',
+    className: 'border-emerald-800 bg-emerald-950/40 text-emerald-300',
+  },
+  unverified: {
+    label: 'Not verified',
+    detail: 'axe-core still reports this rule on the fixed code. Review it before shipping.',
+    className: 'border-amber-800 bg-amber-950/40 text-amber-300',
+  },
+  'not-verifiable': {
+    label: 'Not checked',
+    detail: 'This rule depends on the rest of the page, so the fix could not be confirmed in isolation.',
+    className: 'border-slate-700 bg-slate-900 text-slate-300',
+  },
+};
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -127,6 +148,7 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
           failureSummary: node.failureSummary,
           description: violation.description,
           help: violation.help,
+          ruleId: violation.id,
         }),
       });
       const data = await res.json();
@@ -348,6 +370,15 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
                       <pre className="text-xs font-mono text-emerald-300 bg-emerald-950/30 border border-emerald-900 p-3 rounded overflow-x-auto">
                         <code>{fix.fixedCode}</code>
                       </pre>
+                      <div
+                        className={`rounded border px-3 py-2 text-xs ${VERIFICATION_COPY[fix.verification].className}`}
+                      >
+                        <span className="font-semibold">
+                          {VERIFICATION_COPY[fix.verification].label}
+                        </span>
+                        {' — '}
+                        {VERIFICATION_COPY[fix.verification].detail}
+                      </div>
                       <p className="text-xs text-slate-400">{fix.explanation}</p>
                     </div>
                   )}

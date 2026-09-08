@@ -3,7 +3,9 @@ import { APICallError, RetryError, generateObject } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
+import { BrowserBusyError } from '@/lib/browser';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { verifyFix, type Verification } from '@/lib/verify-fix';
 
 // The model call regularly takes longer than the 10s platform default.
 export const maxDuration = 60;
@@ -30,6 +32,51 @@ Rules:
   drop it instead of keeping a nominal version of it.
 - Never invent visible text. If a name is required and none can be derived, use a clearly marked placeholder.
 - Return the snippet only, without surrounding document structure or markdown fences.`;
+
+/**
+ * A schema-constrained call is used instead of parsing free-form text, which
+ * breaks whenever the model wraps its answer in markdown or the snippet itself
+ * contains quotes.
+ */
+async function generateFix(prompt: string) {
+  const { object } = await generateObject({
+    model: openai('gpt-4o'),
+    // Someone is waiting on this response, and the failures worth retrying
+    // rarely clear within one attempt. The default of two took 27s to report
+    // an exhausted credit balance, which no number of retries would fix.
+    maxRetries: 1,
+    schema: fixSchema,
+    system: SYSTEM_PROMPT,
+    prompt,
+  });
+
+  return object;
+}
+
+/**
+ * A fix that cannot be checked is still worth showing, so anything that stops
+ * the check — a busy browser pool, a missing local Chrome — downgrades to
+ * `not-verifiable` rather than failing the request.
+ */
+async function verify(
+  ruleId: unknown,
+  originalHtml: string,
+  fixedHtml: string
+): Promise<Verification> {
+  if (typeof ruleId !== 'string' || !ruleId) {
+    return 'not-verifiable';
+  }
+
+  try {
+    return await verifyFix({ ruleId, originalHtml, fixedHtml });
+  } catch (error) {
+    if (!(error instanceof BrowserBusyError)) {
+      console.error('Fix verification failed:', error);
+    }
+
+    return 'not-verifiable';
+  }
+}
 
 /**
  * Retryable failures are re-thrown wrapped in a `RetryError`, so the
@@ -59,7 +106,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { html, failureSummary, description, help } = await req.json();
+    const { html, failureSummary, description, help, ruleId } = await req.json();
 
     if (!html || typeof html !== 'string') {
       return NextResponse.json({ error: 'HTML snippet is required' }, { status: 400 });
@@ -79,30 +126,39 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // A schema-constrained call is used instead of parsing free-form text,
-    // which breaks whenever the model wraps its answer in markdown or the
-    // snippet itself contains quotes.
-    const { object } = await generateObject({
-      model: openai('gpt-4o'),
-      // Someone is waiting on this response, and the failures worth retrying
-      // rarely clear within one attempt. The default of two took 27s to report
-      // an exhausted credit balance, which no number of retries would fix.
-      maxRetries: 1,
-      schema: fixSchema,
-      system: SYSTEM_PROMPT,
-      prompt: [
-        `Rule: ${help || description || 'N/A'}`,
-        `Why it fails: ${failureSummary || 'N/A'}`,
-        '',
-        'Inaccessible HTML:',
-        html,
-      ].join('\n'),
-    });
+    const basePrompt = [
+      `Rule: ${help || description || 'N/A'}`,
+      `Why it fails: ${failureSummary || 'N/A'}`,
+      '',
+      'Inaccessible HTML:',
+      html,
+    ].join('\n');
+
+    let fix = await generateFix(basePrompt);
+    let verification = await verify(ruleId, html, fix.fixedCode);
+
+    // Telling the model exactly which rule its answer still trips is far more
+    // useful than asking it to try again, so it gets one such attempt.
+    if (verification === 'unverified') {
+      fix = await generateFix(
+        [
+          basePrompt,
+          '',
+          'A previous attempt produced the snippet below, and axe-core still',
+          `reports the ${ruleId} rule against it. Do not repeat that approach.`,
+          '',
+          fix.fixedCode,
+        ].join('\n')
+      );
+
+      verification = await verify(ruleId, html, fix.fixedCode);
+    }
 
     return NextResponse.json({
       originalCode: html,
-      fixedCode: object.fixedCode,
-      explanation: object.explanation,
+      fixedCode: fix.fixedCode,
+      explanation: fix.explanation,
+      verification,
     });
   } catch (error) {
     console.error('Fix API error:', error);
