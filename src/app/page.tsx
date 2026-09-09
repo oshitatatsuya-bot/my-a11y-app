@@ -42,6 +42,11 @@ export default function Home() {
                 </Link>
               </li>
               <li>
+                <Link className="hover:text-white" href="/login">
+                  Sign in
+                </Link>
+              </li>
+              <li>
                 <a
                   className="rounded-lg bg-sky-500 px-3 py-1.5 font-medium text-slate-950 hover:bg-sky-400"
                   href="#waitlist"
