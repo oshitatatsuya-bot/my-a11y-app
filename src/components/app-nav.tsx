@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { ManageBillingButton, UpgradeButton } from "@/components/billing-buttons"
 import { planLimits } from "@/lib/plans"
 
 interface AppNavProps {
@@ -10,6 +11,7 @@ interface AppNavProps {
 
 export function AppNav({ email, plan, scansUsed }: AppNavProps) {
   const limits = planLimits(plan)
+  const isPaid = plan === "pro" || plan === "agency"
 
   return (
     <header className="border-b border-slate-800">
@@ -25,10 +27,15 @@ export function AppNav({ email, plan, scansUsed }: AppNavProps) {
             History
           </Link>
         </nav>
-        <div className="flex items-center gap-4 text-xs text-slate-400">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
           <span>
             {limits.label} plan · {scansUsed}/{limits.scansPerMonth} scans this month
           </span>
+          {isPaid ? (
+            <ManageBillingButton />
+          ) : (
+            <UpgradeButton compact />
+          )}
           <span className="hidden sm:inline">{email}</span>
           <form action="/auth/signout" method="post">
             <button

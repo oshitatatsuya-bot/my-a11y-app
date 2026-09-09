@@ -1,5 +1,6 @@
 import { Check } from "lucide-react"
 
+import { UpgradeButton } from "@/components/billing-buttons"
 import { buttonVariants } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
@@ -10,8 +11,7 @@ const plans = [
     cadence: "forever",
     description: "Validate a single property and see whether we belong in your stack.",
     featured: false,
-    // Only the free tier is self-serve until billing is wired up.
-    cta: { label: "Start free", href: "/login" },
+    cta: { kind: "link" as const, label: "Start free", href: "/login" },
     features: [
       "1 site, 5 scans / month",
       "AI code fixes, re-checked with axe-core",
@@ -24,12 +24,12 @@ const plans = [
     cadence: "/mo",
     description: "Built for in-house product and compliance teams shipping continuously.",
     featured: true,
-    cta: { label: "Join waitlist", href: "#waitlist" },
+    cta: { kind: "upgrade" as const },
     features: [
       "1,000 scans / month on 3 sites",
       "Everything in Free",
       "Priority email support",
-      "Self-serve billing when it opens",
+      "Self-serve billing via Stripe",
     ],
   },
   {
@@ -38,7 +38,7 @@ const plans = [
     cadence: "/mo",
     description: "Run a portfolio of client properties from one workspace.",
     featured: false,
-    cta: { label: "Join waitlist", href: "#waitlist" },
+    cta: { kind: "link" as const, label: "Join waitlist", href: "#waitlist" },
     features: [
       "5,000 scans / month across a client portfolio",
       "Everything in Pro",
@@ -107,20 +107,22 @@ export function PricingSection() {
                   </li>
                 ))}
               </ul>
-              <a
-                href={plan.cta.href}
-                className={cn(
-                  buttonVariants({
-                    variant: plan.featured ? "default" : "outline",
-                  }),
-                  "mt-8 h-10 w-full",
-                  // White on sky-600 is only 4.02:1, below WCAG 1.4.3, so the
-                  // resting and hover shades both stay at sky-700 or darker.
-                  plan.featured && "bg-sky-700 text-white hover:bg-sky-800"
-                )}
-              >
-                {plan.cta.label}
-              </a>
+              {plan.cta.kind === "upgrade" ? (
+                <UpgradeButton className="mt-8" featured={plan.featured} />
+              ) : (
+                <a
+                  href={plan.cta.href}
+                  className={cn(
+                    buttonVariants({
+                      variant: plan.featured ? "default" : "outline",
+                    }),
+                    "mt-8 h-10 w-full",
+                    plan.featured && "bg-sky-700 text-white hover:bg-sky-800"
+                  )}
+                >
+                  {plan.cta.label}
+                </a>
+              )}
             </li>
           ))}
         </ul>
