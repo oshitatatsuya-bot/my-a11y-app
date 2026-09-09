@@ -1,7 +1,9 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 
 import { LoginForm } from "@/components/login-form"
 import { safeRedirectPath } from "@/lib/site"
+import { createSupabaseServerClient } from "@/lib/supabase/server"
 
 export const metadata = {
   title: "Sign in — A11yFix",
@@ -13,6 +15,17 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
     typeof params.next === "string" ? params.next : undefined
   )
   const linkError = params.error === "link"
+
+  // A one-time link is often opened twice (email client preview, then the
+  // real click). The first visit creates the session; the second reports the
+  // link as used. Send an already-signed-in visitor on instead of an error.
+  const supabase = await createSupabaseServerClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (user) {
+    redirect(next)
+  }
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-slate-50">
@@ -33,7 +46,9 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
             role="alert"
             className="mt-6 rounded-lg border border-red-800 bg-red-950/50 p-3 text-sm text-red-300"
           >
-            That sign-in link is invalid or has expired. Request a new one below.
+            That sign-in link is invalid or has already been used. Request a
+            new one below. If you already signed in in another tab, open
+            Scanner from the home page.
           </p>
         )}
 
