@@ -118,7 +118,14 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
         return;
       }
 
-      if (!res.ok) throw new Error(data.error || 'Scan failed');
+      if (!res.ok) {
+        const message = data.error || 'Scan failed';
+        const details =
+          typeof data.details === 'string' && data.details !== message
+            ? data.details
+            : null;
+        throw new Error(details ? `${message} (${details})` : message);
+      }
 
       const scan = data as ScanResult;
       setResult(scan);

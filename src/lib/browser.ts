@@ -1,6 +1,10 @@
 import { existsSync } from "node:fs"
+import { createRequire } from "node:module"
+import { dirname, join } from "node:path"
 import chromium from "@sparticuz/chromium"
 import puppeteer, { type Browser } from "puppeteer-core"
+
+const require = createRequire(import.meta.url)
 
 const LOCAL_CHROME_PATHS = [
   "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
@@ -23,9 +27,23 @@ let active = 0
 
 export class BrowserBusyError extends Error {}
 
+function serverlessChromiumBin() {
+  try {
+    return join(dirname(require.resolve("@sparticuz/chromium/package.json")), "bin")
+  } catch {
+    return join(process.cwd(), "node_modules/@sparticuz/chromium/bin")
+  }
+}
+
 async function executablePath() {
   if (isVercel) {
-    return await chromium.executablePath()
+    const bin = serverlessChromiumBin()
+    if (!existsSync(bin)) {
+      throw new Error(
+        `Chromium binaries were not packaged (${bin}). Deploy outputFileTracingIncludes for @sparticuz/chromium.`
+      )
+    }
+    return await chromium.executablePath(bin)
   }
 
   for (const path of LOCAL_CHROME_PATHS) {
@@ -53,11 +71,17 @@ export async function withBrowser<T>(
   let browser: Browser | undefined
 
   try {
+    if (isVercel) {
+      // WebGL is unused by axe; skipping it avoids extra work in /tmp.
+      chromium.setGraphicsMode = false
+    }
+
     browser = await puppeteer.launch({
       args: isVercel ? chromium.args : [],
       defaultViewport: isVercel ? SERVERLESS_VIEWPORT : LOCAL_VIEWPORT,
       executablePath: await executablePath(),
-      headless: true,
+      // @sparticuz/chromium ships chrome-headless-shell, not full Chrome.
+      headless: isVercel ? "shell" : true,
     })
 
     return await task(browser)

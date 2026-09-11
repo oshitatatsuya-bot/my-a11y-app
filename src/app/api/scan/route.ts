@@ -10,6 +10,11 @@ import {
   type Violation,
 } from '@/lib/a11y';
 import { BrowserBusyError, withBrowser } from '@/lib/browser';
+import {
+  ScanBlockedError,
+  ScanTimeoutError,
+  openScanTarget,
+} from '@/lib/scan-target';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { loadScannedHosts, loadUsage } from '@/lib/usage';
 
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
     // axe-coreによるWCAGスキャン実行（WCAG 2.x A/AAのルールのみ）
     const axeResults = await withBrowser(async (browser) => {
       const page = await browser.newPage();
-      await page.goto(target.href, { waitUntil: 'networkidle0', timeout: 30000 });
+      await openScanTarget(page, target.href);
 
       return new AxePuppeteer(page).withTags(WCAG_TAGS).analyze();
     });
@@ -205,6 +210,14 @@ export async function POST(req: NextRequest) {
         { error: error.message },
         { status: 429, headers: { 'Retry-After': '30' } }
       );
+    }
+
+    if (error instanceof ScanTimeoutError) {
+      return NextResponse.json({ error: error.message }, { status: 504 });
+    }
+
+    if (error instanceof ScanBlockedError) {
+      return NextResponse.json({ error: error.message, code: 'BOT_CHECK' }, { status: 422 });
     }
 
     console.error('Scan error:', error);
