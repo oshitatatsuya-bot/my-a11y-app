@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { UpgradeButton } from '@/components/billing-buttons';
 import { ScanResults, type ScanResultView } from '@/components/scan-results';
 
 interface UsageState {
@@ -22,15 +23,18 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResultView | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [offerUpgrade, setOfferUpgrade] = useState(false);
   const [usage, setUsage] = useState(initialUsage);
 
   const scansLeft = Math.max(0, usage.scansLimit - usage.scansUsed);
   const quotaReached = scansLeft === 0;
+  const canUpgrade = usage.planLabel === 'Free';
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setOfferUpgrade(false);
     setResult(null);
 
     try {
@@ -52,6 +56,14 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
           typeof data.details === 'string' && data.details !== message
             ? data.details
             : null;
+        if (
+          data.code === 'QUOTA_EXCEEDED' ||
+          data.code === 'SITE_LIMIT_EXCEEDED' ||
+          res.status === 429 ||
+          res.status === 403
+        ) {
+          setOfferUpgrade(canUpgrade);
+        }
         throw new Error(details ? `${message} (${details})` : message);
       }
 
@@ -114,10 +126,16 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
       </form>
 
       {quotaReached && (
-        <p className="text-sm text-amber-300">
-          You have used all {usage.scansLimit} scans in your {usage.planLabel}{' '}
-          plan this month. The allowance resets at the start of next month.
-        </p>
+        <div className="rounded-xl border border-amber-800 bg-amber-950/40 p-4 space-y-3">
+          <p className="text-sm text-amber-200">
+            You have used all {usage.scansLimit} scans in your {usage.planLabel}{' '}
+            plan this month.
+            {canUpgrade
+              ? ' Upgrade to Pro for 1,000 scans across 3 sites.'
+              : ' The allowance resets at the start of next month.'}
+          </p>
+          {canUpgrade ? <UpgradeButton /> : null}
+        </div>
       )}
 
       <p role="status" aria-live="polite" className="sr-only">
@@ -130,10 +148,11 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
 
       {error && (
         <div
-          className="p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-400"
+          className="p-4 bg-red-950/50 border border-red-800 rounded-lg text-red-400 space-y-3"
           role="alert"
         >
-          {error}
+          <p>{error}</p>
+          {offerUpgrade ? <UpgradeButton /> : null}
         </div>
       )}
 
@@ -144,7 +163,7 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
         </p>
       )}
 
-      {result && <ScanResults result={result} />}
+      {result && <ScanResults result={result} offerUpgrade={canUpgrade} />}
     </div>
   );
 }

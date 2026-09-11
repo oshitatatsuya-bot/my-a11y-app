@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 
+import { UpgradeButton } from '@/components/billing-buttons';
 import {
   IMPACT_ORDER,
   scoreColor,
@@ -77,15 +78,23 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   );
 }
 
-export function ScanResults({ result }: { result: ScanResultView }) {
+export function ScanResults({
+  result,
+  offerUpgrade = false,
+}: {
+  result: ScanResultView;
+  offerUpgrade?: boolean;
+}) {
   const [fixingKey, setFixingKey] = useState<string | null>(null);
   const [fixes, setFixes] = useState<Record<string, FixResult>>({});
   const [fixErrors, setFixErrors] = useState<Record<string, string>>({});
+  const [showFixUpgrade, setShowFixUpgrade] = useState(false);
 
   const handleGenerateFix = async (violation: Violation, node: ViolationNode) => {
     const key = `${violation.id}-${node.html}`;
     setFixingKey(key);
     setFixErrors((prev) => ({ ...prev, [key]: '' }));
+    setShowFixUpgrade(false);
 
     try {
       const res = await fetch('/api/fix', {
@@ -101,7 +110,12 @@ export function ScanResults({ result }: { result: ScanResultView }) {
       });
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || 'Fix failed');
+      if (!res.ok) {
+        if (data.code === 'FIX_QUOTA_EXCEEDED' && offerUpgrade) {
+          setShowFixUpgrade(true);
+        }
+        throw new Error(data.error || 'Fix failed');
+      }
       setFixes((prev) => ({ ...prev, [key]: data as FixResult }));
     } catch (err: unknown) {
       setFixErrors((prev) => ({ ...prev, [key]: errorMessage(err) }));
@@ -116,6 +130,16 @@ export function ScanResults({ result }: { result: ScanResultView }) {
 
   return (
     <div className="space-y-8">
+      {showFixUpgrade ? (
+        <div className="rounded-xl border border-amber-800 bg-amber-950/40 p-4 space-y-3">
+          <p className="text-sm text-amber-200">
+            You have reached this month’s AI fix limit on the Free plan. Upgrade
+            to Pro to keep generating verified fixes.
+          </p>
+          <UpgradeButton />
+        </div>
+      ) : null}
+
       <section aria-labelledby="summary-heading" className="space-y-4">
         <h2 id="summary-heading" className="text-xl font-semibold">
           Results for {result.host}
