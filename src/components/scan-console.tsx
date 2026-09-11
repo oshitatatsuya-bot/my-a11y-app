@@ -17,6 +17,24 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
+async function readJsonBody(res: Response) {
+  const text = await res.text();
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text) as Record<string, unknown>;
+  } catch {
+    const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 160);
+    throw new Error(
+      res.ok
+        ? `The server returned a non-JSON response: ${snippet || '(empty)'}`
+        : `Scan failed with HTTP ${res.status}: ${snippet || 'empty response from the server'}`
+    );
+  }
+}
+
 export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
   const router = useRouter();
   const [url, setUrl] = useState('');
@@ -43,7 +61,7 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url }),
       });
-      const data = await res.json();
+      const data = await readJsonBody(res);
 
       if (res.status === 401) {
         router.push('/login?next=/scan');
@@ -51,7 +69,8 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
       }
 
       if (!res.ok) {
-        const message = data.error || 'Scan failed';
+        const message =
+          typeof data.error === 'string' ? data.error : 'Scan failed';
         const details =
           typeof data.details === 'string' && data.details !== message
             ? data.details

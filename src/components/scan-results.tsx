@@ -108,15 +108,25 @@ export function ScanResults({
           ruleId: violation.id,
         }),
       });
-      const data = await res.json();
+      const text = await res.text();
+      let data: Record<string, unknown> = {};
+      try {
+        data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+      } catch {
+        throw new Error(
+          `Fix failed with HTTP ${res.status}: ${text.replace(/\s+/g, ' ').trim().slice(0, 160) || 'empty response'}`
+        );
+      }
 
       if (!res.ok) {
         if (data.code === 'FIX_QUOTA_EXCEEDED' && offerUpgrade) {
           setShowFixUpgrade(true);
         }
-        throw new Error(data.error || 'Fix failed');
+        throw new Error(
+          typeof data.error === 'string' ? data.error : 'Fix failed'
+        );
       }
-      setFixes((prev) => ({ ...prev, [key]: data as FixResult }));
+      setFixes((prev) => ({ ...prev, [key]: data as unknown as FixResult }));
     } catch (err: unknown) {
       setFixErrors((prev) => ({ ...prev, [key]: errorMessage(err) }));
     } finally {
