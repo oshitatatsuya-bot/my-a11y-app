@@ -28,8 +28,8 @@ export default function PrivacyPage() {
             <h2 className="text-base font-semibold text-slate-950">What we collect</h2>
             <ul className="mt-2 list-disc space-y-1 pl-5">
               <li>
-                Work email, when you join the waitlist or sign in with a magic
-                link.
+                Work email, when you sign in with a magic link or join the
+                Agency waitlist.
               </li>
               <li>
                 URLs you ask us to scan, the host, the score, and a summary of
@@ -67,9 +67,16 @@ export default function PrivacyPage() {
           <section>
             <h2 className="text-base font-semibold text-slate-950">Requests</h2>
             <p className="mt-2">
-              To access or delete your data, sign in and write from the same
-              email address. Do not send us pages that contain secrets, private
-              networks, or personal data you are not allowed to process.
+              To access or delete your data, email{" "}
+              <a
+                href="mailto:support@geta11yfix.com"
+                className="font-medium text-sky-800 underline underline-offset-4"
+              >
+                support@geta11yfix.com
+              </a>{" "}
+              from the same address you use to sign in. Do not send us pages
+              that contain secrets, private networks, or personal data you are
+              not allowed to process.
             </p>
           </section>
         </div>

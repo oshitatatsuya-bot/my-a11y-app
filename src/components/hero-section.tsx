@@ -1,52 +1,12 @@
-"use client"
-
-import { useId, useState } from "react"
-import type { FormEvent } from "react"
 import Link from "next/link"
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 
 export function HeroSection() {
-  const emailId = useId()
-  const statusId = useId()
-  const [email, setEmail] = useState("")
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">(
-    "idle"
-  )
-  const [message, setMessage] = useState("")
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setStatus("loading")
-    setMessage("")
-
-    try {
-      const response = await fetch("/api/waitlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
-      const payload = (await response.json()) as { error?: string }
-
-      if (!response.ok) {
-        setStatus("error")
-        setMessage(payload.error ?? "Something went wrong. Please try again.")
-        return
-      }
-
-      setStatus("success")
-      setMessage("You’re on the list. We’ll reach out when your workspace is ready.")
-      setEmail("")
-    } catch {
-      setStatus("error")
-      setMessage("Network error. Check your connection and try again.")
-    }
-  }
-
   return (
     <section
-      id="waitlist"
+      id="hero"
       aria-labelledby="hero-heading"
       className="relative overflow-hidden border-b border-slate-800 bg-slate-950"
     >
@@ -70,74 +30,36 @@ export function HeroSection() {
             progress to legal and procurement—without overlay widgets or a
             six-figure audit retainer.
           </p>
-          <form
-            onSubmit={handleSubmit}
-            className="mt-8 max-w-xl"
-            noValidate
-          >
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="min-w-0 flex-1">
-                <label
-                  htmlFor={emailId}
-                  className="mb-1.5 block text-sm font-medium text-slate-200"
-                >
-                  Work email
-                </label>
-                <Input
-                  id={emailId}
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                  placeholder="you@company.com"
-                  aria-describedby={status !== "idle" ? statusId : undefined}
-                  aria-invalid={status === "error"}
-                  className="h-11 border-slate-700 bg-slate-900 px-3 text-white placeholder:text-slate-500"
-                />
-              </div>
-              <Button
-                type="submit"
-                disabled={status === "loading"}
-                className="h-11 shrink-0 bg-sky-500 px-5 text-sm font-semibold text-slate-950 hover:bg-sky-400"
-              >
-                {status === "loading" ? "Joining…" : "Join the waitlist"}
-              </Button>
-            </div>
-            <p className="mt-3 text-sm text-slate-400">
-              No spam. Early access for engineering, legal, and agency teams.{" "}
-              By joining you agree to the{" "}
-              <Link
-                href="/privacy"
-                className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
-              >
-                privacy policy
-              </Link>
-              .{" "}
-              <Link
-                href="/scan"
-                className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
-              >
-                Or scan a page now on the free plan
-              </Link>
-              .
-            </p>
-            <p
-              id={statusId}
-              role="status"
-              aria-live="polite"
-              className={`mt-3 text-sm ${
-                status === "success"
-                  ? "text-emerald-300"
-                  : status === "error"
-                    ? "text-red-300"
-                    : "sr-only"
-              }`}
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Link
+              href="/login?next=/scan"
+              className={cn(
+                buttonVariants({ size: "lg" }),
+                "h-11 bg-sky-500 px-6 text-sm font-semibold text-slate-950 hover:bg-sky-400"
+              )}
             >
-              {message || "Form status"}
-            </p>
-          </form>
+              Start free scan
+            </Link>
+            <Link
+              href="/login"
+              className={cn(
+                buttonVariants({ size: "lg", variant: "outline" }),
+                "h-11 border-slate-600 bg-transparent px-6 text-sm font-semibold text-white hover:bg-slate-900 hover:text-white"
+              )}
+            >
+              Sign in
+            </Link>
+          </div>
+          <p className="mt-4 text-sm text-slate-400">
+            Free plan: 1 site, 5 scans / month. No credit card.{" "}
+            <Link
+              href="/privacy"
+              className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
+            >
+              Privacy policy
+            </Link>
+            .
+          </p>
         </div>
         <aside
           aria-label="Product snapshot"

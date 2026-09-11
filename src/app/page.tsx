@@ -1,5 +1,6 @@
 import Link from "next/link"
 
+import { AgencyWaitlistSection } from "@/components/agency-waitlist-section"
 import { FeaturesSection } from "@/components/features-section"
 import { HeroSection } from "@/components/hero-section"
 import { PainPointsSection } from "@/components/pain-points-section"
@@ -16,7 +17,7 @@ export default function Home() {
       </a>
       <header className="border-b border-slate-800 bg-slate-950">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
-          <a href="#waitlist" className="text-sm font-semibold tracking-tight text-white">
+          <a href="#hero" className="text-sm font-semibold tracking-tight text-white">
             A11yFix
           </a>
           <nav aria-label="Primary">
@@ -47,12 +48,12 @@ export default function Home() {
                 </Link>
               </li>
               <li>
-                <a
+                <Link
                   className="rounded-lg bg-sky-500 px-3 py-1.5 font-medium text-slate-950 hover:bg-sky-400"
-                  href="#waitlist"
+                  href="/login?next=/scan"
                 >
-                  Get access
-                </a>
+                  Start free
+                </Link>
               </li>
             </ul>
           </nav>
@@ -63,6 +64,7 @@ export default function Home() {
         <PainPointsSection />
         <FeaturesSection />
         <PricingSection />
+        <AgencyWaitlistSection />
       </main>
       <footer className="border-t border-slate-200 bg-white py-8">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
@@ -71,6 +73,17 @@ export default function Home() {
             <Link href="/privacy" className="hover:text-slate-700">
               Privacy
             </Link>
+            <span aria-hidden="true"> · </span>
+            <Link href="/terms" className="hover:text-slate-700">
+              Terms
+            </Link>
+            <span aria-hidden="true"> · </span>
+            <a
+              href="mailto:support@geta11yfix.com"
+              className="hover:text-slate-700"
+            >
+              Support
+            </a>
             <span aria-hidden="true"> · </span>
             Not a substitute for legal advice.
           </p>

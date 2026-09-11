@@ -11,10 +11,10 @@ const plans = [
     cadence: "forever",
     description: "Validate a single property and see whether we belong in your stack.",
     featured: false,
-    cta: { kind: "link" as const, label: "Start free", href: "/login" },
+    cta: { kind: "link" as const, label: "Start free", href: "/login?next=/scan" },
     features: [
       "1 site, 5 scans / month",
-      "AI code fixes, re-checked with axe-core",
+      "15 AI code fixes / month, re-checked with axe-core",
       "Scan history and a public badge",
     ],
   },
@@ -27,6 +27,7 @@ const plans = [
     cta: { kind: "upgrade" as const },
     features: [
       "1,000 scans / month on 3 sites",
+      "1,000 AI fixes / month",
       "Everything in Free",
       "Priority email support",
       "Self-serve billing via Stripe",
@@ -38,7 +39,11 @@ const plans = [
     cadence: "/mo",
     description: "Run a portfolio of client properties from one workspace.",
     featured: false,
-    cta: { kind: "link" as const, label: "Join waitlist", href: "#waitlist" },
+    cta: {
+      kind: "link" as const,
+      label: "Join Agency waitlist",
+      href: "#agency-waitlist",
+    },
     features: [
       "5,000 scans / month across a client portfolio",
       "Everything in Pro",

@@ -4,7 +4,9 @@ import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 import { BrowserBusyError } from '@/lib/browser';
+import { planLimits } from '@/lib/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { currentPeriodStart } from '@/lib/usage';
 import { verifyFix, type Verification } from '@/lib/verify-fix';
 
 // The model call regularly takes longer than the 10s platform default.
@@ -126,6 +128,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const periodStart = currentPeriodStart();
+    const [{ data: profile }, { count: fixesUsed, error: countError }] =
+      await Promise.all([
+        supabase.from('profiles').select('plan').eq('id', user.id).maybeSingle(),
+        supabase
+          .from('ai_fixes')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', user.id)
+          .gte('created_at', periodStart),
+      ]);
+
+    if (countError) {
+      console.error('AI fix quota check failed:', countError);
+      return NextResponse.json(
+        {
+          error:
+            'AI fix quota could not be checked. Apply the ai_fixes migration and retry.',
+        },
+        { status: 503 }
+      );
+    }
+
+    const limits = planLimits(profile?.plan);
+    const used = fixesUsed ?? 0;
+    if (used >= limits.fixesPerMonth) {
+      return NextResponse.json(
+        {
+          error: `Your ${limits.label} plan allows ${limits.fixesPerMonth} AI fixes per month. Upgrade to keep generating fixes.`,
+          code: 'FIX_QUOTA_EXCEEDED',
+          usage: { fixesUsed: used, fixesLimit: limits.fixesPerMonth },
+        },
+        { status: 429 }
+      );
+    }
+
     const basePrompt = [
       `Rule: ${help || description || 'N/A'}`,
       `Why it fails: ${failureSummary || 'N/A'}`,
@@ -152,6 +189,15 @@ export async function POST(req: NextRequest) {
       );
 
       verification = await verify(ruleId, html, fix.fixedCode);
+    }
+
+    const { error: recordError } = await supabase.from('ai_fixes').insert({
+      user_id: user.id,
+      rule_id: typeof ruleId === 'string' ? ruleId : null,
+    });
+
+    if (recordError) {
+      console.error('AI fix could not be recorded:', recordError);
     }
 
     return NextResponse.json({

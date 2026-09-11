@@ -113,7 +113,14 @@ export default async function HistoryPage() {
                     className="rounded-xl border border-slate-800 bg-slate-900 p-4"
                   >
                     <div className="flex items-baseline justify-between gap-3">
-                      <h3 className="truncate font-medium">{host}</h3>
+                      <h3 className="truncate font-medium">
+                        <Link
+                          href={`/history/${latest.id}`}
+                          className="hover:text-sky-300"
+                        >
+                          {host}
+                        </Link>
+                      </h3>
                       <span className="text-xs text-slate-500">
                         {hostScans.length} scan{hostScans.length === 1 ? "" : "s"}
                       </span>
@@ -177,11 +184,14 @@ export default async function HistoryPage() {
                     <th scope="col" className="px-4 py-3 font-medium">
                       Elements
                     </th>
+                    <th scope="col" className="px-4 py-3 font-medium">
+                      <span className="sr-only">Open</span>
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
                   {scans.map((scan) => (
-                    <tr key={scan.id}>
+                    <tr key={scan.id} className="hover:bg-slate-900/60">
                       <td className="px-4 py-3 whitespace-nowrap text-slate-400">
                         {formatter.format(new Date(scan.created_at))}
                       </td>
@@ -197,6 +207,14 @@ export default async function HistoryPage() {
                       </td>
                       <td className="px-4 py-3 text-slate-300">
                         {scan.elements_affected}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Link
+                          href={`/history/${scan.id}`}
+                          className="text-sky-400 hover:underline"
+                        >
+                          Open
+                        </Link>
                       </td>
                     </tr>
                   ))}
