@@ -8,7 +8,10 @@ export const metadata = {
 }
 
 const rows: { label: string; value: string }[] = [
-  { label: "販売業者", value: `${MERCHANT.sellerName}（${MERCHANT.role}）` },
+  {
+    label: "販売業者",
+    value: `${MERCHANT.sellerName}（${MERCHANT.role}）。${MERCHANT.nameNote}`,
+  },
   { label: "サービス名", value: MERCHANT.businessName },
   {
     label: "所在地",

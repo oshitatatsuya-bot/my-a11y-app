@@ -124,7 +124,7 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
         throw new Error(details ? `${message} (${details})` : message);
       }
 
-      const scan = data as ScanResultView & {
+      const scan = data as unknown as ScanResultView & {
         usage?: { scansUsed: number; scansLimit: number };
       };
       setResult({
