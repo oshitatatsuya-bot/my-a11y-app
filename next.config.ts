@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
-const chromiumBin = ["./node_modules/@sparticuz/chromium/**"];
+const scanRuntimeFiles = [
+  "./node_modules/@sparticuz/chromium/**",
+  // @axe-core/puppeteer resolves axe-core at runtime to inject it into the page.
+  "./node_modules/axe-core/**",
+  "./node_modules/@axe-core/puppeteer/**",
+];
 
 const nextConfig: NextConfig = {
   // A lockfile in the parent (home) directory makes Next.js infer the wrong
@@ -8,14 +13,20 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: __dirname,
   },
-  // Keep Chromium on the Node require path. The package locates `bin/` from
-  // import.meta.url; bundling it into a chunk makes that path miss.
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
-  // NFT does not see the brotli binaries (chromium.br, etc.), so they must
-  // be included explicitly or Vercel deploys JS without `/bin`.
+  // Keep these on the Node require path. Chromium locates `bin/` from
+  // import.meta.url, and axe-core is loaded via require.resolve at runtime;
+  // bundling either into a chunk makes those paths miss.
+  serverExternalPackages: [
+    "@sparticuz/chromium",
+    "puppeteer-core",
+    "@axe-core/puppeteer",
+    "axe-core",
+  ],
+  // NFT does not see Chromium's brotli binaries or axe-core's inject source,
+  // so include them explicitly for the routes that launch a browser.
   outputFileTracingIncludes: {
-    "/api/scan": chromiumBin,
-    "/api/fix": chromiumBin,
+    "/api/scan": scanRuntimeFiles,
+    "/api/fix": scanRuntimeFiles,
   },
 };
 
