@@ -29,7 +29,7 @@ const plans = [
       "1,000 scans / month on 3 sites",
       "1,000 AI fixes / month",
       "Everything in Free",
-      "Priority email support",
+      "Priority email support · replies within 1 business day (JST)",
       "Self-serve billing via Stripe",
     ],
   },
@@ -72,6 +72,8 @@ export function PricingSection() {
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-center text-base text-slate-600">
           Start free. Upgrade when scans and fixes become part of every release.
+          Built in Japan—careful product work, and a human inbox when you need
+          help.
         </p>
         <ul className="mt-12 grid gap-6 lg:grid-cols-3">
           {plans.map((plan) => (

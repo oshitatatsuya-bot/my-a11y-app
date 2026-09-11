@@ -55,7 +55,7 @@ export async function openScanTarget(page: Page, href: string) {
   } catch (error) {
     if (isTimeoutError(error)) {
       throw new ScanTimeoutError(
-        "The page took too long to respond. Confirm the URL loads in a browser and try again."
+        "This page took longer than we could wait. Open the URL in your own browser to confirm it loads, then try again—or scan a lighter page such as a static landing page first."
       )
     }
     throw error
@@ -77,7 +77,7 @@ export async function openScanTarget(page: Page, href: string) {
 
   if (await pageLooksLikeBotCheck(page)) {
     throw new ScanBlockedError(
-      "This site served a bot-check page instead of the real HTML, so A11yFix could not scan it. Try a URL that loads without a human verification step."
+      "The site showed a bot-check or waiting page instead of its real content, so we stopped rather than score the wrong HTML. Try a staging URL, a page that loads without a human verification step, or example.com to confirm the scanner is working."
     )
   }
 

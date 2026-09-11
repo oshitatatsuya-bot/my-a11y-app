@@ -98,7 +98,7 @@ export default function TermsPage() {
               >
                 {SUPPORT_EMAIL}
               </a>
-              .
+              . We aim to reply within one business day (Japan Standard Time).
             </p>
           </section>
         </div>

@@ -51,7 +51,15 @@ export function HeroSection() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-slate-400">
-            Free plan: 1 site, 5 scans / month. No credit card.{" "}
+            Free plan: 1 site, 5 scans / month. No credit card. Built in Japan —
+            human support at{' '}
+            <a
+              href="mailto:support@geta11yfix.com"
+              className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
+            >
+              support@geta11yfix.com
+            </a>
+            , usually within one business day (JST).{' '}
             <Link
               href="/privacy"
               className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"

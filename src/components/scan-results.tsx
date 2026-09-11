@@ -143,8 +143,9 @@ export function ScanResults({
       {showFixUpgrade ? (
         <div className="rounded-xl border border-amber-800 bg-amber-950/40 p-4 space-y-3">
           <p className="text-sm text-amber-200">
-            You have reached this month’s AI fix limit on the Free plan. Upgrade
-            to Pro to keep generating verified fixes.
+            You’ve reached this month’s AI fix limit on the Free plan. Pro adds
+            more verified fixes when you need them—no rush if you’d rather wait
+            for the monthly reset.
           </p>
           <UpgradeButton />
         </div>

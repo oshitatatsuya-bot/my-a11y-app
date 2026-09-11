@@ -223,8 +223,10 @@ export async function POST(req: NextRequest) {
     console.error('Scan error:', error);
     return NextResponse.json(
       {
-        error: 'Failed to scan the target URL',
+        error:
+          'We could not finish this scan. Please try again in a moment. If it keeps failing, email support@geta11yfix.com with the URL and we will look into it.',
         details: error instanceof Error ? error.message : String(error),
+        code: 'SCAN_FAILED',
       },
       { status: 500 }
     );

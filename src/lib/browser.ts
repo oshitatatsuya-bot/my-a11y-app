@@ -64,7 +64,9 @@ export async function withBrowser<T>(
   task: (browser: Browser) => Promise<T>
 ): Promise<T> {
   if (active >= MAX_CONCURRENT_BROWSERS) {
-    throw new BrowserBusyError("The scanner is busy. Please retry in a moment.")
+    throw new BrowserBusyError(
+      "We’re finishing another scan right now. Please wait about 30 seconds and try again—you won’t lose your place in line."
+    )
   }
 
   active += 1

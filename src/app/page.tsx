@@ -78,6 +78,10 @@ export default function Home() {
               Terms
             </Link>
             <span aria-hidden="true"> · </span>
+            <Link href="/tokutei" className="hover:text-slate-700">
+              特定商取引法
+            </Link>
+            <span aria-hidden="true"> · </span>
             <a
               href="mailto:support@geta11yfix.com"
               className="hover:text-slate-700"
