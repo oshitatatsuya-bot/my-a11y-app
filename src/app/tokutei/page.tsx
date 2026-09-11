@@ -12,7 +12,7 @@ const rows: { label: string; value: string }[] = [
   { label: "サービス名", value: MERCHANT.businessName },
   {
     label: "所在地",
-    value: `${MERCHANT.postalCode} ${MERCHANT.address}`,
+    value: MERCHANT.address,
   },
   { label: "メールアドレス", value: MERCHANT.email },
   {
