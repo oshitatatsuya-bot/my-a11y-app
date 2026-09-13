@@ -3,18 +3,18 @@ import { BadgeCheck, ScanSearch, Sparkles } from "lucide-react"
 const features = [
   {
     icon: ScanSearch,
-    title: "Instant Scan",
-    body: "Paste a URL and get WCAG-aligned findings in minutes—contrast, names, roles, keyboard traps, and more—ranked by severity for product owners.",
+    title: "Site scan",
+    body: "Discover pages from sitemap.xml (same host), score WCAG A/AA findings across the property—not just the homepage—and rank by severity for product owners.",
   },
   {
     icon: Sparkles,
-    title: "AI Code Fix",
-    body: "Receive suggested patches in the stack you already ship. Review, apply, and re-scan so accessibility work lives in Git, not in a PDF appendix.",
+    title: "AI fix → GitHub PR",
+    body: "Generate patches, re-check with axe-core, then open a pull request in the client repo. Accessibility work lands in Git review—not a PDF appendix.",
   },
   {
     icon: BadgeCheck,
     title: "Embeddable Badge",
-    body: "Publish a living compliance badge that reflects your latest passing scan. Show customers and counsel you are iterating—not hiding behind an overlay.",
+    body: "Publish a living compliance badge that reflects your latest scan. Show customers and counsel you are iterating—not hiding behind an overlay.",
   },
 ]
 

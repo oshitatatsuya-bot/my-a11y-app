@@ -1,8 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 import { UpgradeButton } from '@/components/billing-buttons';
+import { GithubPrForm } from '@/components/github-pr-form';
+import { MonitorOptIn } from '@/components/monitor-opt-in';
 import {
   IMPACT_ORDER,
   scoreColor,
@@ -10,6 +13,18 @@ import {
   type Violation,
   type ViolationNode,
 } from '@/lib/a11y';
+
+export interface SitePageResult {
+  scanId: string;
+  url: string;
+  score: number;
+  violationsCount: number;
+  elementsAffected: number;
+  counts: Record<Impact, number>;
+  rulesPassed: number;
+  error?: string;
+  code?: string;
+}
 
 export interface ScanResultView {
   scanId: string;
@@ -23,6 +38,13 @@ export interface ScanResultView {
   counts: Record<Impact, number>;
   violations: Violation[];
   badgeUrl: string | null;
+  mode?: 'page' | 'site';
+  runId?: string | null;
+  pagesDiscovered?: number;
+  pagesScanned?: number;
+  pagesQueued?: number;
+  discoverySource?: string;
+  pages?: SitePageResult[] | null;
 }
 
 type Verification = 'verified' | 'unverified' | 'not-verifiable';
@@ -32,6 +54,9 @@ interface FixResult {
   fixedCode: string;
   explanation: string;
   verification: Verification;
+  attempts?: number;
+  axeClean?: boolean;
+  remainingFailures?: string[];
 }
 
 const VERIFICATION_COPY: Record<
@@ -156,6 +181,80 @@ export function ScanResults({
           Results for {result.host}
         </h2>
         <p className="text-sm text-slate-400 break-all">{result.url}</p>
+        {result.mode === 'site' ? (
+          <p className="text-sm text-slate-400">
+            Site scan
+            {typeof result.pagesScanned === 'number'
+              ? ` · ${result.pagesScanned} page${result.pagesScanned === 1 ? '' : 's'} scored`
+              : ''}
+            {typeof result.pagesQueued === 'number' && result.pagesQueued > 0
+              ? ` · ${result.pagesQueued} queued for background scan`
+              : ''}
+            {typeof result.pagesDiscovered === 'number'
+              ? ` · ${result.pagesDiscovered} discovered via ${result.discoverySource ?? 'sitemap'}`
+              : ''}
+            . Score below is the average across successful pages; violation detail
+            shows the weakest page.
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href={`/history/${result.scanId}/statement`}
+            className="text-xs border border-slate-600 hover:border-sky-500 text-sky-300 px-3 py-1.5 rounded transition"
+            target="_blank"
+          >
+            Open conformance statement (ACR draft)
+          </Link>
+          <MonitorOptIn seedUrl={result.url} />
+        </div>
+
+        {result.pages && result.pages.length > 0 ? (
+          <div className="overflow-x-auto rounded-xl border border-slate-800">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-slate-900 text-slate-400">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Page</th>
+                  <th className="px-3 py-2 font-medium">Score</th>
+                  <th className="px-3 py-2 font-medium">Rules</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.pages.map((page) => (
+                  <tr
+                    key={page.url}
+                    className="border-t border-slate-800 text-slate-300"
+                  >
+                    <td className="px-3 py-2 font-mono text-xs break-all max-w-md">
+                      {page.scanId ? (
+                        <Link
+                          href={`/history/${page.scanId}`}
+                          className="text-sky-400 underline-offset-2 hover:underline"
+                        >
+                          {page.url}
+                        </Link>
+                      ) : (
+                        page.url
+                      )}
+                    </td>
+                    <td className="px-3 py-2">{page.error ? '—' : page.score}</td>
+                    <td className="px-3 py-2">
+                      {page.error ? '—' : page.violationsCount}
+                    </td>
+                    <td className="px-3 py-2 text-xs">
+                      {page.error ? (
+                        <span className="text-amber-300">{page.error}</span>
+                      ) : (
+                        <span className="text-emerald-400">Saved</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-4">
           <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
@@ -310,8 +409,26 @@ export function ScanResults({
                         </span>
                         {' — '}
                         {VERIFICATION_COPY[fix.verification].detail}
+                        {typeof fix.attempts === 'number' && fix.attempts > 1
+                          ? ` (self-corrected over ${fix.attempts} attempts)`
+                          : ''}
                       </div>
+                      {fix.axeClean ? (
+                        <p className="text-xs text-emerald-300 font-medium">
+                          Sandbox proof: axe-core reports 0 remaining hits for this
+                          rule on the fixed snippet.
+                        </p>
+                      ) : null}
                       <p className="text-xs text-slate-400">{fix.explanation}</p>
+                      <GithubPrForm
+                        fixedCode={fix.fixedCode}
+                        explanation={
+                          fix.axeClean
+                            ? `${fix.explanation}\n\n[A11yFix] axe-core re-verified: 0 remaining violations for this rule in the sandbox harness.`
+                            : `${fix.explanation}\n\n[A11yFix] Warning: this fix was not axe-clean in the sandbox. Review carefully before merge.`
+                        }
+                        ruleId={v.id}
+                      />
                     </div>
                   )}
                 </div>

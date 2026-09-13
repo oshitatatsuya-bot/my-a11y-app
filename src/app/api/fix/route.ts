@@ -7,12 +7,17 @@ import { BrowserBusyError } from '@/lib/browser';
 import { planLimits } from '@/lib/plans';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { currentPeriodStart } from '@/lib/usage';
-import { verifyFix, type Verification } from '@/lib/verify-fix';
+import {
+  verifyFixDetailed,
+  type Verification,
+  type VerifyDetail,
+} from '@/lib/verify-fix';
 
-// The model call regularly takes longer than the 10s platform default.
 export const maxDuration = 60;
 
 const MAX_HTML_LENGTH = 4000;
+/** Self-correction attempts after the first generation (total gens ≤ 1 + this). */
+const MAX_CORRECTION_ROUNDS = 2;
 
 const fixSchema = z.object({
   fixedCode: z
@@ -35,17 +40,9 @@ Rules:
 - Never invent visible text. If a name is required and none can be derived, use a clearly marked placeholder.
 - Return the snippet only, without surrounding document structure or markdown fences.`;
 
-/**
- * A schema-constrained call is used instead of parsing free-form text, which
- * breaks whenever the model wraps its answer in markdown or the snippet itself
- * contains quotes.
- */
 async function generateFix(prompt: string) {
   const { object } = await generateObject({
     model: openai('gpt-4o'),
-    // Someone is waiting on this response, and the failures worth retrying
-    // rarely clear within one attempt. The default of two took 27s to report
-    // an exhausted credit balance, which no number of retries would fix.
     maxRetries: 1,
     schema: fixSchema,
     system: SYSTEM_PROMPT,
@@ -55,36 +52,26 @@ async function generateFix(prompt: string) {
   return object;
 }
 
-/**
- * A fix that cannot be checked is still worth showing, so anything that stops
- * the check — a busy browser pool, a missing local Chrome — downgrades to
- * `not-verifiable` rather than failing the request.
- */
 async function verify(
   ruleId: unknown,
   originalHtml: string,
   fixedHtml: string
-): Promise<Verification> {
+): Promise<VerifyDetail> {
   if (typeof ruleId !== 'string' || !ruleId) {
-    return 'not-verifiable';
+    return { verification: 'not-verifiable', remainingFailures: [] };
   }
 
   try {
-    return await verifyFix({ ruleId, originalHtml, fixedHtml });
+    return await verifyFixDetailed({ ruleId, originalHtml, fixedHtml });
   } catch (error) {
     if (!(error instanceof BrowserBusyError)) {
       console.error('Fix verification failed:', error);
     }
 
-    return 'not-verifiable';
+    return { verification: 'not-verifiable', remainingFailures: [] };
   }
 }
 
-/**
- * Retryable failures are re-thrown wrapped in a `RetryError`, so the
- * provider's own response — the only place that says what actually went
- * wrong — is reachable only through the wrapper.
- */
 function providerError(error: unknown) {
   if (RetryError.isInstance(error)) {
     return APICallError.isInstance(error.lastError) ? error.lastError : undefined;
@@ -94,7 +81,6 @@ function providerError(error: unknown) {
 }
 
 export async function POST(req: NextRequest) {
-  // Each call spends OpenAI credits, so it is gated the same way as scanning.
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -172,24 +158,41 @@ export async function POST(req: NextRequest) {
     ].join('\n');
 
     let fix = await generateFix(basePrompt);
-    let verification = await verify(ruleId, html, fix.fixedCode);
+    let detail = await verify(ruleId, html, fix.fixedCode);
+    let attempts = 1;
 
-    // Telling the model exactly which rule its answer still trips is far more
-    // useful than asking it to try again, so it gets one such attempt.
-    if (verification === 'unverified') {
+    // Self-correction: feed remaining axe failures back into GPT until clean
+    // or we exhaust correction rounds. Only `verified` means axe reported 0
+    // hits for this rule on the fixed snippet in the sandbox harness.
+    while (
+      detail.verification === 'unverified' &&
+      attempts <= MAX_CORRECTION_ROUNDS
+    ) {
+      attempts += 1;
+      const failureBlock =
+        detail.remainingFailures.length > 0
+          ? detail.remainingFailures.map((f) => `- ${f}`).join('\n')
+          : `- axe-core still reports rule ${ruleId}`;
+
       fix = await generateFix(
         [
           basePrompt,
           '',
-          'A previous attempt produced the snippet below, and axe-core still',
-          `reports the ${ruleId} rule against it. Do not repeat that approach.`,
+          `Attempt ${attempts - 1} still failed axe-core for rule ${ruleId}.`,
+          'Remaining axe findings on that snippet:',
+          failureBlock,
           '',
+          'Do not repeat the previous approach. Produce a different fix.',
+          '',
+          'Previous snippet:',
           fix.fixedCode,
         ].join('\n')
       );
 
-      verification = await verify(ruleId, html, fix.fixedCode);
+      detail = await verify(ruleId, html, fix.fixedCode);
     }
+
+    const verification: Verification = detail.verification;
 
     const { error: recordError } = await supabase.from('ai_fixes').insert({
       user_id: user.id,
@@ -205,20 +208,19 @@ export async function POST(req: NextRequest) {
       fixedCode: fix.fixedCode,
       explanation: fix.explanation,
       verification,
+      attempts,
+      remainingFailures: detail.remainingFailures,
+      axeClean: verification === 'verified',
     });
   } catch (error) {
     console.error('Fix API error:', error);
 
-    // A rejected key or an empty balance is an operator problem, not a model
-    // failure, and saying so is the difference between a five minute fix and a
-    // debugging session.
     const apiError = providerError(error);
 
     if (apiError) {
       const body =
         typeof apiError.responseBody === 'string' ? apiError.responseBody : '';
 
-      // Reported as 429 like a rate limit, but no amount of waiting fixes it.
       if (
         body.includes('insufficient_quota') ||
         body.includes('credit_balance_exhausted')

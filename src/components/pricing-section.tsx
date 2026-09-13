@@ -13,8 +13,9 @@ const plans = [
     featured: false,
     cta: { kind: "link" as const, label: "Start free", href: "/login?next=/scan" },
     features: [
-      "1 site, 5 scans / month",
+      "1 site · 5 page scans / month · sitemap site scan (up to 5 pages)",
       "15 AI code fixes / month, re-checked with axe-core",
+      "Open a GitHub PR from a fix (bring your own token)",
       "Scan history and a public badge",
     ],
   },
@@ -26,10 +27,11 @@ const plans = [
     featured: true,
     cta: { kind: "upgrade" as const },
     features: [
-      "1,000 scans / month on 3 sites",
-      "1,000 AI fixes / month",
+      "1,000 page scans / month on 3 sites",
+      "Site scans up to 25 pages via sitemap",
+      "1,000 AI fixes / month + GitHub PR flow",
       "Everything in Free",
-      "Priority email support · replies within 1 business day (JST)",
+      "Email support when self-serve is not enough",
       "Self-serve billing via Stripe",
     ],
   },
@@ -37,7 +39,7 @@ const plans = [
     name: "Agency",
     price: "$99",
     cadence: "/mo",
-    description: "Run a portfolio of client properties from one workspace.",
+    description: "Portfolio coverage for agencies that ship client accessibility with every delivery.",
     featured: false,
     cta: {
       kind: "link" as const,
@@ -45,10 +47,11 @@ const plans = [
       href: "#agency-waitlist",
     },
     features: [
-      "5,000 scans / month across a client portfolio",
-      "Everything in Pro",
-      "Team seats and white-label reports (coming)",
-      "We'll confirm scope before charging",
+      "5,000 page scans / month · up to 100 pages per site scan",
+      "1,000 client hosts / month",
+      "GitHub PR workflow for client repos",
+      "Team seats and white-label reports (next)",
+      "We onboard Agency accounts from the waitlist first",
     ],
   },
 ]
@@ -71,9 +74,8 @@ export function PricingSection() {
           Straightforward plans. No overlay tax.
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-center text-base text-slate-600">
-          Start free. Upgrade when scans and fixes become part of every release.
-          Built in Japan—careful product work, and a human inbox when you need
-          help.
+          Start free. Upgrade when site scans, AI fixes, and GitHub PRs become
+          part of every release—not when an overlay tax shows up on the invoice.
         </p>
         <ul className="mt-12 grid gap-6 lg:grid-cols-3">
           {plans.map((plan) => (

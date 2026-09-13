@@ -4,6 +4,8 @@ import { dirname, join } from "node:path"
 import chromium from "@sparticuz/chromium"
 import puppeteer, { type Browser } from "puppeteer-core"
 
+import { scanProxyServer, stealthLaunchArgs } from "@/lib/stealth"
+
 const require = createRequire(import.meta.url)
 
 const LOCAL_CHROME_PATHS = [
@@ -78,12 +80,20 @@ export async function withBrowser<T>(
       chromium.setGraphicsMode = false
     }
 
+    const proxy = scanProxyServer()
+    const baseArgs = isVercel ? chromium.args : []
+    const args = stealthLaunchArgs([
+      ...baseArgs,
+      ...(proxy ? [`--proxy-server=${proxy}`] : []),
+    ])
+
     browser = await puppeteer.launch({
-      args: isVercel ? chromium.args : [],
+      args,
       defaultViewport: isVercel ? SERVERLESS_VIEWPORT : LOCAL_VIEWPORT,
       executablePath: await executablePath(),
       // @sparticuz/chromium ships chrome-headless-shell, not full Chrome.
       headless: isVercel ? "shell" : true,
+      ignoreDefaultArgs: ["--enable-automation"],
     })
 
     return await task(browser)

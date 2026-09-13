@@ -1,5 +1,7 @@
 import type { Page } from "puppeteer-core"
 
+import { applyStealth } from "@/lib/stealth"
+
 export class ScanTimeoutError extends Error {}
 export class ScanBlockedError extends Error {}
 
@@ -45,8 +47,7 @@ function isBotCheckText(value: string) {
  * — but it must be the *target* document, not an interstitial.
  */
 export async function openScanTarget(page: Page, href: string) {
-  const ua = await page.browser().userAgent()
-  await page.setUserAgent(ua.replace("HeadlessChrome", "Chrome"))
+  await applyStealth(page)
   // axe-core injects a script; CSP on the target must not block it.
   await page.setBypassCSP(true)
 
@@ -61,6 +62,9 @@ export async function openScanTarget(page: Page, href: string) {
     throw error
   }
 
+  // Give JS challenges a longer window when stealth + proxy may clear them.
+  const challengeBudgetMs = process.env.SCAN_PROXY_URL ? 20_000 : 15_000
+
   if (await pageLooksLikeBotCheck(page)) {
     await page
       .waitForFunction(
@@ -70,14 +74,30 @@ export async function openScanTarget(page: Page, href: string) {
             title
           )
         },
-        { timeout: 12_000 }
+        { timeout: challengeBudgetMs }
       )
       .catch(() => {})
+
+    // Soft reload once — some managed bots pass on the second document load.
+    if (await pageLooksLikeBotCheck(page)) {
+      await page.reload({ waitUntil: "domcontentloaded", timeout: 15_000 }).catch(() => {})
+      await page
+        .waitForFunction(
+          () => {
+            const title = document.title || ""
+            return !/just a moment|attention required|checking your browser|しばらくお待ちください|please wait/i.test(
+              title
+            )
+          },
+          { timeout: 8_000 }
+        )
+        .catch(() => {})
+    }
   }
 
   if (await pageLooksLikeBotCheck(page)) {
     throw new ScanBlockedError(
-      "The site showed a bot-check or waiting page instead of its real content, so we stopped rather than score the wrong HTML. Try a staging URL, a page that loads without a human verification step, or example.com to confirm the scanner is working."
+      "The site still showed a bot-check page after stealth retries, so we stopped rather than score the wrong HTML. Prefer a staging URL, set SCAN_PROXY_URL (residential proxy) in production, or try example.com to confirm the scanner works."
     )
   }
 

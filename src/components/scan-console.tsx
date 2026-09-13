@@ -15,6 +15,7 @@ interface UsageState {
 }
 
 type ErrorKind = 'bot' | 'timeout' | 'busy' | 'quota' | 'generic';
+type ScanMode = 'site' | 'page';
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
@@ -49,7 +50,8 @@ function classifyError(code: unknown, status: number, message: string): ErrorKin
 const ERROR_HINTS: Record<ErrorKind, string[]> = {
   bot: [
     'Open the URL in your browser and confirm the real page appears without a waiting screen.',
-    'Prefer a staging or publicly cacheable page when the production site uses bot protection.',
+    'Prefer a staging or publicly cacheable page when production uses bot protection.',
+    'Operators can set SCAN_PROXY_URL (residential proxy) on the server to improve pass rates.',
     'You can verify the scanner with https://example.com first.',
   ],
   timeout: [
@@ -65,13 +67,14 @@ const ERROR_HINTS: Record<ErrorKind, string[]> = {
   ],
   generic: [
     'Retry once. Transient failures do happen on cold starts.',
-    'If it fails again, email support@geta11yfix.com with the URL—we reply within one business day (JST).',
+    'If it fails again, email support@geta11yfix.com with the URL—we reply within one business day.',
   ],
 };
 
 export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
   const router = useRouter();
   const [url, setUrl] = useState('');
+  const [mode, setMode] = useState<ScanMode>('site');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ScanResultView | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +99,7 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
       const res = await fetch('/api/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, mode }),
       });
       const data = await readJsonBody(res);
 
@@ -131,6 +134,8 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
         ...scan,
         rulesPassed: scan.rulesPassed ?? null,
         badgeUrl: scan.badgeUrl ?? null,
+        pages: scan.pages ?? null,
+        mode: scan.mode ?? 'page',
       });
       if (scan.usage) {
         setUsage((prev) => ({ ...prev, ...scan.usage }));
@@ -155,45 +160,78 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
           Accessibility Scanner &amp; AI Fixer
         </h1>
         <p className="text-slate-400 mt-2">
-          Enter a URL to scan for WCAG 2.0–2.2 level A and AA violations and
-          generate AI code fixes.
+          Site scan reads your sitemap (same host), runs WCAG 2.0–2.2 A/AA checks
+          across pages, then ships AI fixes you can open as a GitHub PR.
         </p>
         <p className="text-sm text-slate-500 mt-2">
-          {usage.planLabel} plan: {scansLeft} of {usage.scansLimit} scans left
-          this month, across{' '}
-          {usage.sites === 1 ? 'one site' : `${usage.sites} sites`}.
+          {usage.planLabel} plan: {scansLeft} of {usage.scansLimit} page scans
+          left this month, across{' '}
+          {usage.sites === 1 ? 'one site' : `${usage.sites} sites`}. Each page
+          uses one credit.
         </p>
       </div>
 
-      <form onSubmit={handleScan} className="flex gap-4">
-        <label htmlFor="scan-url" className="sr-only">
-          URL to scan
-        </label>
-        <input
-          id="scan-url"
-          type="url"
-          required
-          placeholder="https://example.com"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
-          type="submit"
-          disabled={loading || quotaReached}
-          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-lg transition"
-        >
-          {loading ? 'Scanning...' : 'Scan Now'}
-        </button>
+      <form onSubmit={handleScan} className="space-y-4">
+        <fieldset className="flex flex-wrap gap-4 text-sm text-slate-300">
+          <legend className="sr-only">Scan mode</legend>
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="scan-mode"
+              checked={mode === 'site'}
+              onChange={() => setMode('site')}
+              className="accent-blue-500"
+            />
+            Site scan (sitemap)
+          </label>
+          <label className="inline-flex items-center gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="scan-mode"
+              checked={mode === 'page'}
+              onChange={() => setMode('page')}
+              className="accent-blue-500"
+            />
+            Single page
+          </label>
+        </fieldset>
+
+        <div className="flex gap-4">
+          <label htmlFor="scan-url" className="sr-only">
+            URL to scan
+          </label>
+          <input
+            id="scan-url"
+            type="url"
+            required
+            placeholder="https://example.com"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <button
+            type="submit"
+            disabled={loading || quotaReached}
+            className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-lg transition"
+          >
+            {loading
+              ? mode === 'site'
+                ? 'Scanning site...'
+                : 'Scanning...'
+              : mode === 'site'
+                ? 'Scan site'
+                : 'Scan page'}
+          </button>
+        </div>
       </form>
 
       {quotaReached && (
         <div className="rounded-xl border border-amber-800 bg-amber-950/40 p-4 space-y-3">
           <p className="text-sm text-amber-200">
-            You have used all {usage.scansLimit} scans in your {usage.planLabel}{' '}
-            plan this month.
+            You have used all {usage.scansLimit} page scans in your{' '}
+            {usage.planLabel} plan this month.
             {canUpgrade
-              ? ' When you are ready, Pro unlocks 1,000 scans across 3 sites—no pressure either way.'
+              ? ' When you are ready, Pro unlocks 1,000 page scans across 3 sites—no pressure either way.'
               : ' Your allowance renews at the start of next month. Thank you for scanning with us.'}
           </p>
           {canUpgrade ? <UpgradeButton /> : null}
@@ -245,8 +283,9 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
 
       {loading && (
         <p className="text-slate-400 text-sm">
-          Opening the page in a private browser and running axe-core. Most scans
-          finish in 5–15 seconds—thank you for waiting.
+          {mode === 'site'
+            ? 'Discovering pages from your sitemap, then running axe-core on each. Large sites may use several scan credits—thank you for waiting.'
+            : 'Opening the page in a hardened browser and running axe-core. Most scans finish in 5–15 seconds.'}
         </p>
       )}
 

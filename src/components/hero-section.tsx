@@ -26,9 +26,9 @@ export function HeroSection() {
             Fix WCAG &amp; ADA Compliance Issues Before You Get Sued
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-relaxed text-slate-300">
-            Scan production pages, ship AI-generated code fixes, and prove
-            progress to legal and procurement—without overlay widgets or a
-            six-figure audit retainer.
+            Sitemap-aware site scans, AI code fixes with axe re-checks, and
+            one-click GitHub pull requests—so teams prove progress without
+            overlay widgets or a six-figure audit retainer.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Link
@@ -51,15 +51,15 @@ export function HeroSection() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-slate-400">
-            Free plan: 1 site, 5 scans / month. No credit card. Built in Japan —
-            human support at{' '}
+            Free plan: 1 site, 5 page scans / month (sitemap site scan
+            supported). No credit card. Self-serve docs in-product; email{' '}
             <a
               href="mailto:support@geta11yfix.com"
               className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"
             >
               support@geta11yfix.com
-            </a>
-            , usually within one business day (JST).{' '}
+            </a>{' '}
+            when you need a human.{' '}
             <Link
               href="/privacy"
               className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"

@@ -1,3 +1,8 @@
+/**
+ * Enhanced fix verification: re-run axe on a harnessed snippet and return
+ * whether the target rule still fails, plus failure detail for self-correction.
+ */
+
 import { AxePuppeteer } from "@axe-core/puppeteer"
 import type { Page } from "puppeteer-core"
 
@@ -5,8 +10,12 @@ import { withBrowser } from "./browser"
 
 export type Verification = "verified" | "unverified" | "not-verifiable"
 
-// Elements that only carry meaning inside <head>. Everything else goes in the
-// body so that it renders and can be measured.
+export type VerifyDetail = {
+  verification: Verification
+  /** axe failure summaries when the fixed snippet still trips the rule */
+  remainingFailures: string[]
+}
+
 const HEAD_ONLY = /^\s*<\s*(?:meta|title|link|base|style)\b/i
 
 function harness(snippet: string) {
@@ -23,26 +32,21 @@ function harness(snippet: string) {
   ].join("")
 }
 
-async function stillViolates(page: Page, ruleId: string, snippet: string) {
+async function analyzeRule(page: Page, ruleId: string, snippet: string) {
   await page.setContent(harness(snippet), { waitUntil: "domcontentloaded" })
-
   const results = await new AxePuppeteer(page).withRules([ruleId]).analyze()
-
-  return results.violations.some((violation) => violation.id === ruleId)
+  const hit = results.violations.filter((v) => v.id === ruleId)
+  const remainingFailures = hit.flatMap((v) =>
+    v.nodes.map((n) => n.failureSummary || v.help).filter(Boolean)
+  )
+  return { stillFails: hit.length > 0, remainingFailures }
 }
 
 /**
  * Re-runs the failing rule against the generated snippet instead of taking the
  * model's word that it fixed anything.
- *
- * The original snippet is measured first. When the rule does not reproduce in
- * this minimal document it needs page context the harness cannot supply — a
- * stylesheet for contrast rules, sibling landmarks for region rules — so a
- * pass on the fixed snippet would prove nothing. Those report
- * `not-verifiable`, because claiming a fix is confirmed when it is not is
- * worse than admitting the limit.
  */
-export async function verifyFix({
+export async function verifyFixDetailed({
   ruleId,
   originalHtml,
   fixedHtml,
@@ -50,16 +54,32 @@ export async function verifyFix({
   ruleId: string
   originalHtml: string
   fixedHtml: string
-}): Promise<Verification> {
+}): Promise<VerifyDetail> {
   return withBrowser(async (browser) => {
     const page = await browser.newPage()
 
-    if (!(await stillViolates(page, ruleId, originalHtml))) {
-      return "not-verifiable"
+    const original = await analyzeRule(page, ruleId, originalHtml)
+    if (!original.stillFails) {
+      return { verification: "not-verifiable", remainingFailures: [] }
     }
 
-    return (await stillViolates(page, ruleId, fixedHtml))
-      ? "unverified"
-      : "verified"
+    const fixed = await analyzeRule(page, ruleId, fixedHtml)
+    if (fixed.stillFails) {
+      return {
+        verification: "unverified",
+        remainingFailures: fixed.remainingFailures.slice(0, 5),
+      }
+    }
+
+    return { verification: "verified", remainingFailures: [] }
   })
+}
+
+export async function verifyFix(args: {
+  ruleId: string
+  originalHtml: string
+  fixedHtml: string
+}): Promise<Verification> {
+  const detail = await verifyFixDetailed(args)
+  return detail.verification
 }
