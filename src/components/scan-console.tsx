@@ -63,7 +63,8 @@ const ERROR_HINTS: Record<ErrorKind, string[]> = {
     'Another scan is using the browser pool. Wait about 30 seconds, then retry.',
   ],
   quota: [
-    'Your monthly allowance is used up. Upgrade for more capacity, or wait until next month.',
+    'Your monthly allowance is used up, or this host is outside your site slots.',
+    'Keep scanning hosts you already used this month, try https://example.com (does not use a site slot), or upgrade.',
   ],
   generic: [
     'Retry once. Transient failures do happen on cold starts.',

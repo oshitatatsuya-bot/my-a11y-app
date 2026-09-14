@@ -6,6 +6,17 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error)
 }
 
+function nextCheckHint() {
+  // Cron runs daily ~14:00 UTC; cadence is still "weekly" between due checks.
+  const next = new Date()
+  next.setUTCDate(next.getUTCDate() + 1)
+  next.setUTCHours(14, 0, 0, 0)
+  if (next.getTime() <= Date.now()) {
+    next.setUTCDate(next.getUTCDate() + 1)
+  }
+  return next.toISOString().slice(0, 16).replace('T', ' ') + ' UTC'
+}
+
 export function MonitorOptIn({
   seedUrl,
   defaultEmail,
@@ -27,7 +38,7 @@ export function MonitorOptIn({
         onClick={() => setOpen(true)}
         className="text-xs border border-slate-600 hover:border-slate-400 text-slate-200 px-3 py-1.5 rounded transition"
       >
-        Enable weekly monitoring
+        Enable score monitoring
       </button>
     )
   }
@@ -55,7 +66,7 @@ export function MonitorOptIn({
           const data = (await res.json()) as { error?: string }
           if (!res.ok) throw new Error(data.error || 'Could not enable monitoring')
           setMessage(
-            'Weekly monitoring is on. We will re-scan this host and email you if the score drops.'
+            `Monitoring is on. We re-check due hosts on a daily job (about ${nextCheckHint()}); email alerts fire when the score drops vs your last check. Leave Slack blank unless you have a hooks.slack.com URL.`
           )
         } catch (err) {
           setError(errorMessage(err))
@@ -65,8 +76,8 @@ export function MonitorOptIn({
       }}
     >
       <p className="text-xs text-slate-400">
-        Catch regressions when editors add pages. Uses one scan credit per
-        weekly check.
+        Catch regressions after editors ship new pages. Each due check uses one
+        scan credit. Next scheduler window ≈ {nextCheckHint()}.
       </p>
       <label className="block text-xs text-slate-400 space-y-1">
         Alert email
@@ -79,7 +90,7 @@ export function MonitorOptIn({
         />
       </label>
       <label className="block text-xs text-slate-400 space-y-1">
-        Slack webhook (optional)
+        Slack webhook (optional — must start with hooks.slack.com)
         <input
           value={slack}
           onChange={(e) => setSlack(e.target.value)}

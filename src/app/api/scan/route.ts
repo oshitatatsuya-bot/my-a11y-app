@@ -13,6 +13,7 @@ import {
   type Violation,
 } from '@/lib/a11y';
 import { BrowserBusyError, withBrowser } from '@/lib/browser';
+import { countableHosts, isDemoHost } from '@/lib/demo-hosts';
 import { discoverSitePages } from '@/lib/discover-pages';
 import { planLimits } from '@/lib/plans';
 import {
@@ -20,6 +21,7 @@ import {
   ScanTimeoutError,
   openScanTarget,
 } from '@/lib/scan-target';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { loadScannedHosts, loadUsage } from '@/lib/usage';
 
@@ -198,12 +200,19 @@ export async function POST(req: NextRequest) {
     }
 
     const hosts = await loadScannedHosts(supabase, user.id, usage.periodStart);
-    if (!hosts.includes(target.host) && hosts.length >= usage.limits.sites) {
+    const billedHosts = countableHosts(hosts);
+    if (
+      !isDemoHost(target.host) &&
+      !hosts.includes(target.host) &&
+      billedHosts.length >= usage.limits.sites
+    ) {
       return NextResponse.json(
         {
           error: `Your ${usage.limits.label} plan covers ${usage.limits.sites} site${
             usage.limits.sites === 1 ? '' : 's'
-          } per month, and you have already scanned ${hosts.join(', ')} this month. Upgrade to scan more hosts.`,
+          } per month (not counting example.com demos). You have already scanned ${billedHosts.join(
+            ', '
+          )} this month. Keep scanning those hosts, try https://example.com, or upgrade for more.`,
           code: 'SITE_LIMIT_EXCEEDED',
           usage: {
             plan: usage.plan,
@@ -399,9 +408,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const avgScore = Math.round(
-      okPages.reduce((sum, p) => sum + p.score, 0) / okPages.length
-    );
+    const failedPages = pageResults.filter((p) => p.error);
+    // Headline score is the worst successful page—not an average that hides failures.
+    const headlineScore = Math.min(...okPages.map((p) => p.score));
     const totalViolations = okPages.reduce((sum, p) => sum + p.violationsCount, 0);
     const totalElements = okPages.reduce((sum, p) => sum + p.elementsAffected, 0);
     const counts = okPages.reduce(
@@ -433,6 +442,23 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Badge should reflect the weakest scored page from this run, not the last page.
+    if (badgeToken) {
+      try {
+        const admin = createSupabaseAdminClient();
+        const { error: badgeError } = await admin
+          .from('badges')
+          .update({ score: headlineScore, scanned_at: new Date().toISOString() })
+          .eq('token', badgeToken);
+        if (badgeError) console.warn('badge score sync skipped:', badgeError.message);
+      } catch (err) {
+        console.warn(
+          'badge score sync unavailable:',
+          err instanceof Error ? err.message : err
+        );
+      }
+    }
+
     return NextResponse.json({
       mode: 'site',
       scanId: detail.scanId,
@@ -443,13 +469,18 @@ export async function POST(req: NextRequest) {
       standards: WCAG_TAGS,
       rulesPassed,
       violationsCount: totalViolations,
-      score: avgScore,
+      score: headlineScore,
+      scoreNote:
+        failedPages.length > 0
+          ? `Worst scored page among ${okPages.length} successful pages. ${failedPages.length} page(s) failed and are not in this score.`
+          : `Worst scored page among ${okPages.length} successful pages (not an average).`,
       elementsAffected: totalElements,
       counts,
       violations: aggregatedViolations,
       discoverySource: discovered.source,
       pagesDiscovered: discovered.pages.length,
       pagesScanned: okPages.length,
+      pagesFailed: failedPages.length,
       pagesQueued: queuedPages.length,
       pages: pageResults,
       badgeUrl: badgeToken

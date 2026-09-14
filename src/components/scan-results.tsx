@@ -42,8 +42,10 @@ export interface ScanResultView {
   runId?: string | null;
   pagesDiscovered?: number;
   pagesScanned?: number;
+  pagesFailed?: number;
   pagesQueued?: number;
   discoverySource?: string;
+  scoreNote?: string;
   pages?: SitePageResult[] | null;
 }
 
@@ -187,16 +189,32 @@ export function ScanResults({
             {typeof result.pagesScanned === 'number'
               ? ` · ${result.pagesScanned} page${result.pagesScanned === 1 ? '' : 's'} scored`
               : ''}
+            {typeof result.pagesFailed === 'number' && result.pagesFailed > 0
+              ? ` · ${result.pagesFailed} failed`
+              : ''}
             {typeof result.pagesQueued === 'number' && result.pagesQueued > 0
               ? ` · ${result.pagesQueued} queued for background scan`
               : ''}
             {typeof result.pagesDiscovered === 'number'
               ? ` · ${result.pagesDiscovered} discovered via ${result.discoverySource ?? 'sitemap'}`
               : ''}
-            . Score below is the average across successful pages; violation detail
-            shows the weakest page.
+            . {result.scoreNote ??
+              'Headline score is the worst successful page (not an average).'}
           </p>
         ) : null}
+
+        <div className="rounded-lg border border-amber-800/80 bg-amber-950/30 px-3 py-2 text-xs text-amber-100/90 space-y-1 max-w-2xl">
+          <p>
+            <strong className="font-semibold">Draft only.</strong> The
+            conformance statement is an automated ACR draft from axe-core—not a
+            signed VPAT®, not legal advice, and not enough alone for procurement
+            sign-off.
+          </p>
+          <p>
+            The embeddable badge shows a score, not a claim that the site is
+            WCAG-conformant.
+          </p>
+        </div>
 
         <div className="flex flex-wrap gap-2">
           <Link
@@ -204,7 +222,7 @@ export function ScanResults({
             className="text-xs border border-slate-600 hover:border-sky-500 text-sky-300 px-3 py-1.5 rounded transition"
             target="_blank"
           >
-            Open conformance statement (ACR draft)
+            Open draft ACR (not a VPAT)
           </Link>
           <MonitorOptIn seedUrl={result.url} />
         </div>
@@ -309,8 +327,8 @@ export function ScanResults({
               height={20}
             />
             <p className="text-xs text-slate-400">
-              The badge always reflects your most recent scan of this host. Keep the
-              token private to anyone you do not want reading this score.
+              Score display only—not a WCAG conformance claim or legal certification.
+              Reflects your most recent scan of this host. Keep the token private.
             </p>
             <pre className="text-xs font-mono text-slate-300 bg-slate-950 p-3 rounded overflow-x-auto">
               <code>{badgeSnippet}</code>
@@ -428,6 +446,7 @@ export function ScanResults({
                             : `${fix.explanation}\n\n[A11yFix] Warning: this fix was not axe-clean in the sandbox. Review carefully before merge.`
                         }
                         ruleId={v.id}
+                        axeClean={Boolean(fix.axeClean)}
                       />
                     </div>
                   )}

@@ -13,10 +13,12 @@ export function GithubPrForm({
   fixedCode,
   explanation,
   ruleId,
+  axeClean = false,
 }: {
   fixedCode: string
   explanation: string
   ruleId: string
+  axeClean?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [owner, setOwner] = useState('')
@@ -65,13 +67,29 @@ export function GithubPrForm({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="text-xs bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-2 rounded transition border border-slate-600"
-      >
-        Open GitHub PR
-      </button>
+      <div className="space-y-1">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={
+            axeClean
+              ? 'text-xs bg-emerald-700 hover:bg-emerald-600 text-white font-medium px-4 py-2 rounded transition'
+              : 'text-xs bg-slate-800 hover:bg-slate-700 text-white font-medium px-4 py-2 rounded transition border border-slate-600'
+          }
+        >
+          {axeClean ? 'Open GitHub PR (axe-clean)' : 'Open GitHub PR (review first)'}
+        </button>
+        {!axeClean ? (
+          <p className="text-[11px] text-amber-300/90">
+            This snippet was not axe-clean in the sandbox. Prefer review before
+            merge.
+          </p>
+        ) : (
+          <p className="text-[11px] text-emerald-300/90">
+            Sandbox re-check: 0 remaining hits for this rule.
+          </p>
+        )}
+      </div>
     )
   }
 

@@ -29,6 +29,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "seedUrl is required" }, { status: 400 })
   }
 
+  if (
+    slackWebhookUrl &&
+    !/^https:\/\/hooks\.slack\.com\//i.test(slackWebhookUrl)
+  ) {
+    return NextResponse.json(
+      {
+        error:
+          "Slack webhook must be an https://hooks.slack.com/… URL. Leave it blank if you only want email.",
+      },
+      { status: 400 }
+    )
+  }
+
   let host: string
   try {
     const u = new URL(seedUrl)

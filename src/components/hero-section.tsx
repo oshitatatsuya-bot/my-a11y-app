@@ -51,8 +51,8 @@ export function HeroSection() {
             </Link>
           </div>
           <p className="mt-4 text-sm text-slate-400">
-            Free plan: 1 site, 5 page scans / month (sitemap site scan
-            supported). No credit card. Self-serve docs in-product; email{' '}
+            Free: 3 sites, 15 page scans / month, sitemap site scans, axe-checked
+            AI fixes, draft ACR (not a VPAT). No credit card. Email{' '}
             <a
               href="mailto:support@geta11yfix.com"
               className="font-medium text-sky-300 underline underline-offset-4 hover:text-sky-200"

@@ -18,8 +18,9 @@ export interface PlanLimits {
 export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: {
     label: "Free",
-    scansPerMonth: 5,
-    sites: 1,
+    // Enough to taste a small site scan + AI fixes before upgrading.
+    scansPerMonth: 15,
+    sites: 3,
     fixesPerMonth: 15,
     pagesPerSiteScan: 5,
   },

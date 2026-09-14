@@ -9,12 +9,12 @@ const features = [
   {
     icon: Sparkles,
     title: "AI fix → GitHub PR",
-    body: "Generate patches, re-check with axe-core, then open a pull request in the client repo. Accessibility work lands in Git review—not a PDF appendix.",
+    body: "Generate patches, re-check with axe-core, then open a pull request. Prefer axe-clean fixes; treat unverified snippets as review-required—not magic.",
   },
   {
     icon: BadgeCheck,
-    title: "Embeddable Badge",
-    body: "Publish a living compliance badge that reflects your latest scan. Show customers and counsel you are iterating—not hiding behind an overlay.",
+    title: "Draft ACR + badge",
+    body: "Export an automated ACR draft for internal sharing (not a signed VPAT) and an embeddable score badge that tracks progress—not a legal shield by itself.",
   },
 ]
 
