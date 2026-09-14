@@ -55,9 +55,9 @@ const ERROR_HINTS: Record<ErrorKind, string[]> = {
     'You can verify the scanner with https://example.com first.',
   ],
   timeout: [
+    'Site scans on heavy hosts can hit the server time limit. Switch to Single page, or retry Site scan once (we now scan fewer pages inline and queue the rest).',
     'Confirm the page loads quickly in a normal browser.',
-    'Very heavy pages sometimes need a second try after a short wait.',
-    'If it keeps timing out, email us the URL and we will investigate.',
+    'You can verify the scanner with https://example.com first.',
   ],
   busy: [
     'Another scan is using the browser pool. Wait about 30 seconds, then retry.',
@@ -285,7 +285,7 @@ export function ScanConsole({ initialUsage }: { initialUsage: UsageState }) {
       {loading && (
         <p className="text-slate-400 text-sm">
           {mode === 'site'
-            ? 'Discovering pages from your sitemap, then running axe-core on each. Large sites may use several scan credits—thank you for waiting.'
+            ? 'Scanning the first pages now; remaining sitemap URLs go to the background queue so we stay under the server time limit.'
             : 'Opening the page in a hardened browser and running axe-core. Most scans finish in 5–15 seconds.'}
         </p>
       )}

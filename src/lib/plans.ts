@@ -7,6 +7,11 @@ export interface PlanLimits {
   fixesPerMonth: number
   /** Max pages pulled from sitemap / same-host discovery per site scan. */
   pagesPerSiteScan: number
+  /**
+   * Pages scanned inside the HTTP request. The rest are queued so Vercel
+   * Hobby (≈60s) does not 504 the whole site scan.
+   */
+  pagesInlinePerSiteScan: number
 }
 
 /**
@@ -23,6 +28,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     sites: 3,
     fixesPerMonth: 15,
     pagesPerSiteScan: 5,
+    pagesInlinePerSiteScan: 2,
   },
   pro: {
     label: "Pro",
@@ -30,6 +36,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     sites: 3,
     fixesPerMonth: 1000,
     pagesPerSiteScan: 25,
+    pagesInlinePerSiteScan: 3,
   },
   agency: {
     label: "Agency",
@@ -37,6 +44,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     sites: 1000,
     fixesPerMonth: 5000,
     pagesPerSiteScan: 100,
+    pagesInlinePerSiteScan: 5,
   },
 }
 

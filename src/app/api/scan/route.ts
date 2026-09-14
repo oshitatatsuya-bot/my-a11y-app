@@ -28,7 +28,8 @@ import { loadScannedHosts, loadUsage } from '@/lib/usage';
 // Headless Chrome startup plus multi-page site scans need the full budget.
 export const maxDuration = 60;
 
-const SITE_SCAN_DEADLINE_MS = 48_000;
+// Leave headroom under Vercel's ~60s gateway so cold start + Chromium do not 504.
+const SITE_SCAN_DEADLINE_MS = 32_000;
 
 function isBlockedAddress(address: string, family: number): boolean {
   if (family === 4) {
@@ -271,6 +272,7 @@ export async function POST(req: NextRequest) {
     // --- Site scan: sitemap discovery + sequential pages in one browser ---
     const remaining = Math.max(0, usage.limits.scansPerMonth - usage.scansUsed);
     const pageCap = Math.min(limits.pagesPerSiteScan, remaining);
+    const inlineCap = Math.min(limits.pagesInlinePerSiteScan, pageCap);
     if (pageCap < 1) {
       return NextResponse.json(
         {
@@ -284,6 +286,8 @@ export async function POST(req: NextRequest) {
     const discovered = await discoverSitePages(target.href, pageCap);
     const runId = randomUUID();
     const started = Date.now();
+    const inlinePages = discovered.pages.slice(0, inlineCap);
+    const deferredPages = discovered.pages.slice(inlineCap);
 
     type PageResult = {
       scanId: string;
@@ -308,9 +312,9 @@ export async function POST(req: NextRequest) {
     let worstPage: PageResult | null = null;
 
     await withBrowser(async (browser) => {
-      for (const pageUrl of discovered.pages) {
+      for (const pageUrl of inlinePages) {
         if (Date.now() - started > SITE_SCAN_DEADLINE_MS) break;
-        if (pageResults.filter((p) => !p.error).length >= pageCap) break;
+        if (pageResults.filter((p) => !p.error).length >= inlineCap) break;
 
         try {
           const analyzed = await axePage(browser, pageUrl);
@@ -386,7 +390,7 @@ export async function POST(req: NextRequest) {
             code,
           });
           // Seed page bot-blocked → fail the whole site scan loudly.
-          if (pageUrl === discovered.pages[0] && err instanceof ScanBlockedError) {
+          if (pageUrl === inlinePages[0] && err instanceof ScanBlockedError) {
             throw err;
           }
         }
@@ -425,9 +429,9 @@ export async function POST(req: NextRequest) {
     const rulesPassed = okPages.reduce((sum, p) => sum + p.rulesPassed, 0);
     const detail = worstPage ?? okPages[0];
 
-    // Pages we discovered but could not finish inline go to the background queue.
-    const scannedUrls = new Set(okPages.map((p) => p.url));
-    const queuedPages = discovered.pages.filter((p) => !scannedUrls.has(p));
+    // Deferred discovery + anything not finished inline goes to the daily queue.
+    const seenInline = new Set(pageResults.map((p) => p.url));
+    const queuedPages = discovered.pages.filter((p) => !seenInline.has(p));
     if (queuedPages.length > 0) {
       const rows = queuedPages.map((pageUrl) => ({
         user_id: user.id,
