@@ -70,6 +70,14 @@ export default function Home() {
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
           <p>© {new Date().getFullYear()} A11yFix. Accessibility tooling for product teams.</p>
           <p>
+            <Link href="/guide" className="hover:text-slate-700">
+              Guide
+            </Link>
+            <span aria-hidden="true"> · </span>
+            <Link href="/guide/ja" className="hover:text-slate-700">
+              ガイド
+            </Link>
+            <span aria-hidden="true"> · </span>
             <Link href="/privacy" className="hover:text-slate-700">
               Privacy
             </Link>

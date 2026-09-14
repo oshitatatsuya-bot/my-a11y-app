@@ -26,6 +26,9 @@ export function AppNav({ email, plan, scansUsed }: AppNavProps) {
           <Link href="/history" className="text-slate-300 hover:text-white">
             History
           </Link>
+          <Link href="/guide" className="text-slate-300 hover:text-white">
+            Guide
+          </Link>
         </nav>
         <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
           <span>

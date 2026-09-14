@@ -27,6 +27,8 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/scan": scanRuntimeFiles,
     "/api/fix": scanRuntimeFiles,
+    "/guide": ["./docs/**"],
+    "/guide/ja": ["./docs/**"],
   },
 };
 
